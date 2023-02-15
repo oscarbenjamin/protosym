@@ -1,0 +1,12 @@
+{
+  "_output_dir": "/home/oscar/current/sympy/protosym",
+  "_template": "gh:cjolowicz/cookiecutter-hypermodern-python",
+  "author": "Oscar Benjamin",
+  "email": "oscar.j.benjamin@gmail.com",
+  "friendly_name": "ProtoSym",
+  "github_user": "oscarbenjamin",
+  "license": "BSD 3-clause",
+  "package_name": "protosym",
+  "project_name": "protosym",
+  "version": "0.0.0"
+}
