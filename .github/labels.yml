@@ -26,7 +26,7 @@
   description: This issue or pull request already exists
   color: cfd3d7
 - name: enhancement
-  description: New feature or a request
+  description: New feature or request
   color: a2eeef
 - name: github_actions
   description: Pull requests that update Github_actions code
