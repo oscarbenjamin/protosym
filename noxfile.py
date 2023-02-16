@@ -27,7 +27,7 @@ nox.options.sessions = (
     "safety",
     "mypy",
     "tests",
-    "typeguard",
+    # "typeguard", disabled because it conflicts with if TYPE_CHECKING
     "xdoctest",
     "docs-build",
 )
@@ -122,7 +122,7 @@ def safety(session: Session) -> None:
     )
 
 
-@session(python=python_versions)
+@session(python="3.9")
 def mypy(session: Session) -> None:
     """Type-check using mypy."""
     args = session.posargs or ["src", "tests", "docs/conf.py"]
@@ -158,12 +158,16 @@ def coverage(session: Session) -> None:
     session.run("coverage", *args)
 
 
-@session(python=python_versions)
-def typeguard(session: Session) -> None:
-    """Runtime type checking using Typeguard."""
-    session.install(".")
-    session.install("pytest", "typeguard", "pygments")
-    session.run("pytest", f"--typeguard-packages={package}", *session.posargs)
+# It seems that with typeguard it is not possible to use if TYPE_CHECKING
+# blocks and all types in annotations need to be resolvable at runtime. For now
+# we disable this runtime type checking feature.
+#
+# @session(python=python_versions)
+# def typeguard(session: Session) -> None:
+#     """Runtime type checking using Typeguard."""
+#     session.install(".")
+#     session.install("pytest", "typeguard", "pygments")
+#     session.run("pytest", f"--typeguard-packages={package}", *session.posargs)
 
 
 @session(python=python_versions)
