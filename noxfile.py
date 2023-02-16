@@ -176,7 +176,7 @@ def xdoctest(session: Session) -> None:
     args = session.posargs or ["all"]
     session.install(".")
     session.install("xdoctest[colors]")
-    session.run("python", "-m", "xdoctest", package, *args)
+    session.run("python", "-m", "xdoctest", "--quiet", package, *args)
 
 
 @session(name="docs-build", python="3.9")
