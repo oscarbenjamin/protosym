@@ -63,6 +63,10 @@ source = ["protosym"]
 [tool.coverage.report]
 show_missing = true
 fail_under = 100
+exclude_lines = [
+    "pragma: no cover",
+    "if _TYPE_CHECKING:",
+]
 
 [tool.mypy]
 strict = true
