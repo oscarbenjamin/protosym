@@ -3,7 +3,7 @@ import sys
 
 
 def main(*args: str) -> int:
-    """Protosym CLI."""
+    """ProtoSym."""
     print("Welcome to ProtoSym!")
     return 0
 
