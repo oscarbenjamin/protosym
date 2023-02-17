@@ -1,0 +1,23 @@
+Core types
+==========
+
+.. automodule:: protosym.core.atom
+
+.. autoclass:: protosym.core.atom::AtomType
+    :members:
+
+.. autoclass:: protosym.core.atom::Atom
+    :members:
+
+.. automodule:: protosym.core.tree
+
+.. autoclass:: protosym.core.tree::TreeExpr
+    :members:
+
+.. autoclass:: protosym.core.tree::TreeAtom
+    :members:
+
+.. autoclass:: protosym.core.tree::TreeNode
+    :members:
+
+.. autofunction:: protosym.core.tree::topological_sort

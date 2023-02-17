@@ -9,7 +9,7 @@
    :maxdepth: 1
 
    usage
-   reference
+   reference/index.rst
    contributing
    Code of Conduct <codeofconduct>
    License <license>
