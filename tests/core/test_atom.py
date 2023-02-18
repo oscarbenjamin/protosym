@@ -1,26 +1,35 @@
 from protosym.core.atom import Atom
 from protosym.core.atom import AtomType
+from protosym.core.atom import AtomTypeInt
+from protosym.core.atom import AtomTypeStr
 
 
 def test_AtomType() -> None:
     """Test creation and equality of AtomTypes."""
-    Integer = AtomType("Integer", int)
-    Symbol = AtomType("Symbol", str)
+    Integer = AtomTypeInt("Integer", int)
+    Symbol = AtomTypeStr("Symbol", str)
 
-    assert type(Integer) is AtomType
-    assert type(Symbol) is AtomType
+    assert isinstance(Integer, AtomType)
+    assert isinstance(Symbol, AtomType)
+    assert isinstance(Integer, AtomTypeInt)
+    assert not isinstance(Integer, AtomTypeStr)
+    assert isinstance(Symbol, AtomTypeStr)
+    assert not isinstance(Symbol, AtomTypeInt)
+
+    assert type(Integer) is AtomTypeInt
+    assert type(Symbol) is AtomTypeStr
     assert str(Integer) == repr(Integer) == "Integer"
     assert str(Symbol) == repr(Symbol) == "Symbol"
     assert (Integer == Integer) is True
     assert (Symbol == Symbol) is True
-    assert (Integer == Symbol) is False
-    assert (Symbol == Integer) is False
+    assert (Integer == Symbol) is False  # type:ignore[comparison-overlap]
+    assert (Symbol == Integer) is False  # type:ignore[comparison-overlap]
 
 
 def test_Atom() -> None:
     """Test creation and equality of Atoms."""
-    Integer = AtomType("Integer", int)
-    Symbol = AtomType("Symbol", str)
+    Integer = AtomTypeInt("Integer", int)
+    Symbol = AtomTypeStr("Symbol", str)
 
     one = Integer(1)
     zero = Integer(0)
@@ -43,14 +52,14 @@ def test_Atom() -> None:
     assert (x == x) is True
     assert (one == zero) is False
     assert (zero == one) is False
-    assert (x == one) is False
+    assert (x == one) is False  # type:ignore[comparison-overlap]
 
     assert (one != one) is False
     assert (zero != zero) is False
     assert (x != x) is False
     assert (one != zero) is True
     assert (zero != one) is True
-    assert (x != one) is True
+    assert (x != one) is True  # type:ignore[comparison-overlap]
 
     # Atoms should be globally unique
     one2 = Integer(1)

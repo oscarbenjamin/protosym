@@ -9,11 +9,11 @@ from weakref import WeakValueDictionary as _WeakDict
 
 
 if _TYPE_CHECKING:
-    from typing import Optional
-    from protosym.core.atom import Atom
+    from typing import Optional, Hashable
+    from protosym.core.atom import Atom, AnyAtom
 
 
-_all_tree_atoms: _WeakDict[Atom, TreeAtom] = _WeakDict()
+_all_tree_atoms: _WeakDict[Atom[Hashable], TreeAtom] = _WeakDict()
 _all_tree_nodes: _WeakDict[tuple[TreeExpr, ...], TreeNode] = _WeakDict()
 
 
@@ -23,10 +23,10 @@ class TreeExpr:
     Every :class:`TreeExpr` is actually either an instance of :class:`TreeAtom`
     for atomic expressions or :class:`TreeNode` for compound expressions.
 
-    >>> from protosym.core.atom import AtomType
+    >>> from protosym.core.atom import AtomTypeInt, AtomTypeStr
     >>> from protosym.core.tree import TreeAtom, TreeExpr, TreeNode
-    >>> Function = AtomType('Function', str)
-    >>> Integer = AtomType('Integer', int)
+    >>> Function = AtomTypeStr('Function', str)
+    >>> Integer = AtomTypeInt('Integer', int)
     >>> f = TreeAtom(Function('f'))
     >>> one = TreeAtom(Integer(1))
     >>> f
@@ -116,9 +116,9 @@ class TreeAtom(TreeExpr):
     attribute and then provides an empty :attr:`TreeExpr.children` attribute to
     match the interface expected of :class:`TreeExpr`.
 
-    >>> from protosym.core.atom import AtomType
+    >>> from protosym.core.atom import AtomTypeInt
     >>> from protosym.core.tree import TreeAtom
-    >>> Integer = AtomType('Integer', int)
+    >>> Integer = AtomTypeInt('Integer', int)
     >>> one = TreeAtom(Integer(1))
     >>> one
     TreeAtom(Integer(1))
@@ -139,9 +139,9 @@ class TreeAtom(TreeExpr):
 
     __slots__ = ("value",)
 
-    value: Optional[Atom]
+    value: Optional[Atom[Hashable]]
 
-    def __new__(cls, value: Atom) -> TreeAtom:
+    def __new__(cls, value: AnyAtom) -> TreeAtom:
         """Return a prevously created TreeAtom or a new one."""
         previous = _all_tree_atoms.get(value, None)
         if previous is not None:
@@ -172,10 +172,10 @@ class TreeNode(TreeExpr):
     :class:`TreeNode` we first need to construct :class:`TreeAtom` expressions
     to represent the children.
 
-    >>> from protosym.core.atom import AtomType
+    >>> from protosym.core.atom import AtomTypeInt, AtomTypeStr
     >>> from protosym.core.tree import TreeNode
-    >>> Integer = AtomType('Integer', int)
-    >>> Function = AtomType('Function', str)
+    >>> Integer = AtomTypeInt('Integer', int)
+    >>> Function = AtomTypeStr('Function', str)
     >>> one = TreeAtom(Integer(1))
     >>> cos = TreeAtom(Function('cos'))
     >>> cos(one)
@@ -228,10 +228,10 @@ def topological_sort(expression: TreeExpr) -> list[TreeExpr]:
 
     We first create some atom types and atoms:
 
-    >>> from protosym.core.atom import AtomType
+    >>> from protosym.core.atom import AtomTypeStr
     >>> from protosym.core.tree import TreeAtom
-    >>> Function = AtomType('Function', str)
-    >>> Symbol = AtomType('Symbol', str)
+    >>> Function = AtomTypeStr('Function', str)
+    >>> Symbol = AtomTypeStr('Symbol', str)
     >>> f = TreeAtom(Function('f'))
     >>> x = TreeAtom(Symbol('x'))
     >>> y = TreeAtom(Symbol('y'))

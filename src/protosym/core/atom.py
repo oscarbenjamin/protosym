@@ -4,18 +4,41 @@ This module defines the :class:`AtomType` and :class:`Atom` types.
 """
 from __future__ import annotations
 
+from typing import cast
+from typing import Generic as _Generic
+from typing import Hashable as _Hashable
 from typing import TYPE_CHECKING as _TYPE_CHECKING
+from typing import TypeVar as _TypeVar
 from weakref import WeakValueDictionary as _WeakDict
 
 
+__all__ = [
+    "Atom",
+    "AtomType",
+]
+
+
+_T_co = _TypeVar("_T_co", bound=_Hashable, covariant=True)
+
+
 if _TYPE_CHECKING:
-    from typing import Hashable, Callable, Any
+    from typing import Callable, Any
+
+    AnyValue = _Hashable
+    KeyType = tuple["AtomType[AnyValue]", AnyValue]
+    AtomStoreType = _WeakDict[KeyType, "Atom[AnyValue]"]
 
 
-_all_atoms: _WeakDict[tuple[AtomType, Hashable, type], Atom] = _WeakDict()
+#
+# The global store of Atoms. This maps from AtomTypes and values to Atoms.
+# Whenever an Atom is constructed this store is used to ensure that there is
+# only ever a unique object representing a given Atom by returning a
+# preexisting object if there is one.
+#
+_all_atoms: AtomStoreType = _WeakDict()
 
 
-class AtomType:
+class AtomType(_Generic[_T_co]):
     """Identifier to distinguish different kinds of atoms.
 
     :ivar name: Name of this :class:`AtomType`.
@@ -24,12 +47,12 @@ class AtomType:
     An :class:`AtomType` is not an Expression but is used to construct atomic
     expressions.
 
-    >>> Integer = AtomType('Integer', int)
+    >>> Integer = AtomTypeInt('Integer', int)
     >>> Integer
     Integer
     >>> Integer(1)
     Integer(1)
-    >>> Symbol = AtomType('Symbol', str)
+    >>> Symbol = AtomTypeStr('Symbol', str)
     >>> Symbol
     Symbol
     >>> Symbol('x')
@@ -70,13 +93,24 @@ class AtomType:
         """Name of the Atom as a string."""
         return self.name
 
-    def __call__(self, value: Any) -> Atom:
+
+class AtomTypeStr(AtomType[str]):
+    """AtomType for Atoms that hold an ``int`` as their value."""
+
+    def __call__(self, value: str) -> Atom[str]:
         """Create an Atom of this type."""
-        value_converted = self.converter(value)
-        return Atom(self, value_converted)
+        return Atom(self, value)
 
 
-class Atom:
+class AtomTypeInt(AtomType[int]):
+    """AtomType for Atoms that hold an ``int`` as their value."""
+
+    def __call__(self, value: int) -> Atom[int]:
+        """Create an Atom of this type."""
+        return Atom(self, value)
+
+
+class Atom(_Generic[_T_co]):
     """Low level representation of atomic expressions.
 
     :ivar atom_type: The associated :class:`AtomType` for this :class:`Atom`.
@@ -91,8 +125,8 @@ class Atom:
     :class:`Atom` is not intended to be constructed directly but rather is created
     by calling an :class:`AtomType`.
 
-    >>> from protosym.core.atom import AtomType, Atom
-    >>> Integer = AtomType('Integer', int)
+    >>> from protosym.core.atom import AtomTypeInt, Atom
+    >>> Integer = AtomTypeInt('Integer', int)
     >>> one = Integer(1)
     >>> one
     Integer(1)
@@ -143,19 +177,16 @@ class Atom:
         "value",
     )
 
-    atom_type: AtomType
-    value: Any
+    atom_type: AtomType[_T_co]
+    value: _T_co
 
-    def __new__(cls, atom_type: AtomType, value: Any) -> Atom:
+    def __new__(cls, atom_type: AtomType[_T_co], value: _T_co) -> Atom[_T_co]:
         """New Atom or an existing Atom from the global store."""
-        #
-        # Include type(value) in the key to avoid e.g. 1 == 1.0
-        #
-        key = (atom_type, value, type(value))
+        key = (atom_type, value)
 
         previous = _all_atoms.get(key, None)
         if previous is not None:
-            return previous
+            return cast(Atom[_T_co], previous)
 
         obj = object.__new__(cls)
         obj.atom_type = atom_type
@@ -166,7 +197,7 @@ class Atom:
         # here then we will make sure to retrieve the object created there or
         # otherwise force the other thread to accept the value we have created
         # here.
-        obj = _all_atoms.setdefault(key, obj)
+        obj = cast(Atom[_T_co], _all_atoms.setdefault(key, obj))
 
         return obj
 
@@ -177,3 +208,7 @@ class Atom:
     def __str__(self) -> str:
         """Pretty representation as e.g. ``'1'``."""
         return str(self.value)
+
+
+if _TYPE_CHECKING:
+    AnyAtom = Atom[_Hashable]
