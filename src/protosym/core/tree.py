@@ -4,16 +4,23 @@ This module defines classes for representing expressions in top-down tree form.
 """
 from __future__ import annotations
 
+from typing import cast
+from typing import Generic as _Generic
+from typing import Hashable as _Hashable
 from typing import TYPE_CHECKING as _TYPE_CHECKING
+from typing import TypeVar as _TypeVar
 from weakref import WeakValueDictionary as _WeakDict
 
 
+_T_co = _TypeVar("_T_co", bound=_Hashable, covariant=True)
+
+
 if _TYPE_CHECKING:
-    from typing import Optional, Hashable
-    from protosym.core.atom import Atom, AnyAtom
+    from typing import Hashable
+    from protosym.core.atom import Atom
 
 
-_all_tree_atoms: _WeakDict[Atom[Hashable], TreeAtom] = _WeakDict()
+_all_tree_atoms: _WeakDict[Atom[Hashable], TreeAtom[Hashable]] = _WeakDict()
 _all_tree_nodes: _WeakDict[tuple[TreeExpr, ...], TreeNode] = _WeakDict()
 
 
@@ -109,7 +116,7 @@ class TreeExpr:
         return TreeNode(*expressions)
 
 
-class TreeAtom(TreeExpr):
+class TreeAtom(TreeExpr, _Generic[_T_co]):
     """Class for atomic tree expressions.
 
     A :class:`TreeAtom` wraps an :class:`Atom` as its internal ``value``
@@ -139,19 +146,19 @@ class TreeAtom(TreeExpr):
 
     __slots__ = ("value",)
 
-    value: Optional[Atom[Hashable]]
+    value: Atom[_T_co]
 
-    def __new__(cls, value: AnyAtom) -> TreeAtom:
+    def __new__(cls, value: Atom[_T_co]) -> TreeAtom[_T_co]:
         """Return a prevously created TreeAtom or a new one."""
         previous = _all_tree_atoms.get(value, None)
         if previous is not None:
-            return previous
+            return cast(TreeAtom[_T_co], previous)
 
         obj = object.__new__(cls)
         obj.children = ()
         obj.value = value
 
-        obj = _all_tree_atoms.setdefault(value, obj)
+        obj = cast(TreeAtom[_T_co], _all_tree_atoms.setdefault(value, obj))
 
         return obj
 

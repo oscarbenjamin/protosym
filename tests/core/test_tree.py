@@ -38,14 +38,14 @@ def test_TreeExpr_basic() -> None:
     assert (one_tree == one_tree) is True
     assert (f_tree == f_tree) is True
     assert (f_one == f_one) is True
-    assert (one_tree == f_tree) is False
-    assert (one_tree == one_atom) is False  # type: ignore
+    assert (one_tree == f_tree) is False  # type: ignore[comparison-overlap]
+    assert (one_tree == one_atom) is False  # type: ignore[comparison-overlap]
 
     assert (one_tree != one_tree) is False
     assert (f_tree != f_tree) is False
     assert (f_one != f_one) is False
-    assert (one_tree != f_tree) is True
-    assert (one_tree != one_atom) is True  # type: ignore
+    assert (one_tree != f_tree) is True  # type: ignore[comparison-overlap]
+    assert (one_tree != one_atom) is True  # type: ignore[comparison-overlap]
 
     assert TreeAtom(one_atom) is TreeAtom(one_atom)
     assert f_tree(one_tree) is f_tree(one_tree)
