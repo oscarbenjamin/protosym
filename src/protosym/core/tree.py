@@ -4,6 +4,7 @@ This module defines classes for representing expressions in top-down tree form.
 """
 from __future__ import annotations
 
+from typing import Any
 from typing import cast
 from typing import Generic as _Generic
 from typing import Hashable as _Hashable
@@ -19,8 +20,8 @@ if _TYPE_CHECKING:
     from protosym.core.atom import Atom
 
 
-_all_tree_atoms = _WeakDict()  # type:ignore
-_all_tree_nodes = _WeakDict()  # type:ignore
+_all_tree_atoms: _WeakDict[Any, Any] = _WeakDict()
+_all_tree_nodes: _WeakDict[Any, Any] = _WeakDict()
 
 
 class TreeExpr:
@@ -79,7 +80,7 @@ class TreeExpr:
     >>> type(expr.children[0].value)
     <class 'protosym.core.atom.Atom'>
 
-    Any :class:`TreeExpr` is either constructed from an :class:`Atom` using
+    Every :class:`TreeExpr` is either constructed from an :class:`Atom` using
     :class:`TreeAtom` or it is constructed as a compound expressions defined in
     terms of preexisting :class:`TreeExpr`. There are two equivalent ways to
     construct a :class:`TreeExpr`:

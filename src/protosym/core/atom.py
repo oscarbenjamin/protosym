@@ -4,6 +4,7 @@ This module defines the :class:`AtomType` and :class:`Atom` types.
 """
 from __future__ import annotations
 
+from typing import Any
 from typing import cast
 from typing import Generic as _Generic
 from typing import Hashable as _Hashable
@@ -22,14 +23,13 @@ __all__ = [
 AnyValue = _Hashable
 _T = _TypeVar("_T", bound=AnyValue)
 
-
 #
 # The global store of Atoms. This maps from AtomTypes and values to Atoms.
 # Whenever an Atom is constructed this store is used to ensure that there is
 # only ever a unique object representing a given Atom by returning a
 # preexisting object if there is one.
 #
-_all_atoms = _WeakDict()  # type: ignore
+_all_atoms: _WeakDict[Any, Any] = _WeakDict()
 
 
 class AtomType(_Generic[_T]):
@@ -184,7 +184,7 @@ class Atom(_Generic[_T]):
         # here then we will make sure to retrieve the object created there or
         # otherwise force the other thread to accept the value we have created
         # here.
-        obj = cast(Atom[_T], _all_atoms.setdefault(key, obj))
+        obj = _all_atoms.setdefault(key, obj)
 
         return obj
 
