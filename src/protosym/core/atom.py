@@ -20,11 +20,12 @@ __all__ = [
 
 _T_co = _TypeVar("_T_co", bound=_Hashable, covariant=True)
 
+AnyValue = _Hashable
+
 
 if _TYPE_CHECKING:
     from typing import Callable, Any
 
-    AnyValue = _Hashable
     KeyType = tuple["AtomType[AnyValue]", AnyValue]
     AtomStoreType = _WeakDict[KeyType, "Atom[AnyValue]"]
 
