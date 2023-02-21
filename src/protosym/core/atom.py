@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 
-_T_co = _TypeVar("_T_co", bound=_Hashable, covariant=True)
+_T = _TypeVar("_T", bound=_Hashable)
 
 AnyValue = _Hashable
 
@@ -36,10 +36,10 @@ if _TYPE_CHECKING:
 # only ever a unique object representing a given Atom by returning a
 # preexisting object if there is one.
 #
-_all_atoms: AtomStoreType = _WeakDict()
+_all_atoms = _WeakDict()  # type: ignore
 
 
-class AtomType(_Generic[_T_co]):
+class AtomType(_Generic[_T]):
     """Identifier to distinguish different kinds of atoms.
 
     :ivar name: Name of this :class:`AtomType`.
@@ -48,12 +48,13 @@ class AtomType(_Generic[_T_co]):
     An :class:`AtomType` is not an Expression but is used to construct atomic
     expressions.
 
-    >>> Integer = AtomTypeInt('Integer', int)
+    >>> from protosym.core.atom import AtomType
+    >>> Integer = AtomType('Integer', int)
     >>> Integer
     Integer
     >>> Integer(1)
     Integer(1)
-    >>> Symbol = AtomTypeStr('Symbol', str)
+    >>> Symbol = AtomType('Symbol', str)
     >>> Symbol
     Symbol
     >>> Symbol('x')
@@ -94,24 +95,12 @@ class AtomType(_Generic[_T_co]):
         """Name of the Atom as a string."""
         return self.name
 
-
-class AtomTypeStr(AtomType[str]):
-    """AtomType for Atoms that hold an ``int`` as their value."""
-
-    def __call__(self, value: str) -> Atom[str]:
+    def __call__(self, value: _T) -> Atom[_T]:
         """Create an Atom of this type."""
         return Atom(self, value)
 
 
-class AtomTypeInt(AtomType[int]):
-    """AtomType for Atoms that hold an ``int`` as their value."""
-
-    def __call__(self, value: int) -> Atom[int]:
-        """Create an Atom of this type."""
-        return Atom(self, value)
-
-
-class Atom(_Generic[_T_co]):
+class Atom(_Generic[_T]):
     """Low level representation of atomic expressions.
 
     :ivar atom_type: The associated :class:`AtomType` for this :class:`Atom`.
@@ -126,8 +115,8 @@ class Atom(_Generic[_T_co]):
     :class:`Atom` is not intended to be constructed directly but rather is created
     by calling an :class:`AtomType`.
 
-    >>> from protosym.core.atom import AtomTypeInt, Atom
-    >>> Integer = AtomTypeInt('Integer', int)
+    >>> from protosym.core.atom import AtomType, Atom
+    >>> Integer = AtomType('Integer', int)
     >>> one = Integer(1)
     >>> one
     Integer(1)
@@ -178,16 +167,16 @@ class Atom(_Generic[_T_co]):
         "value",
     )
 
-    atom_type: AtomType[_T_co]
-    value: _T_co
+    atom_type: AtomType[_T]
+    value: _T
 
-    def __new__(cls, atom_type: AtomType[_T_co], value: _T_co) -> Atom[_T_co]:
+    def __new__(cls, atom_type: AtomType[_T], value: _T) -> Atom[_T]:
         """New Atom or an existing Atom from the global store."""
         key = (atom_type, value)
 
         previous = _all_atoms.get(key, None)
         if previous is not None:
-            return cast(Atom[_T_co], previous)
+            return cast(Atom[_T], previous)
 
         obj = object.__new__(cls)
         obj.atom_type = atom_type
@@ -198,7 +187,7 @@ class Atom(_Generic[_T_co]):
         # here then we will make sure to retrieve the object created there or
         # otherwise force the other thread to accept the value we have created
         # here.
-        obj = cast(Atom[_T_co], _all_atoms.setdefault(key, obj))
+        obj = cast(Atom[_T], _all_atoms.setdefault(key, obj))
 
         return obj
 

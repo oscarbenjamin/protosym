@@ -7,8 +7,6 @@ from typing import Type
 from typing import TypeVar
 
 from protosym.core.atom import AtomType
-from protosym.core.atom import AtomTypeInt
-from protosym.core.atom import AtomTypeStr
 from protosym.core.evaluate import Evaluator
 from protosym.core.tree import TreeAtom
 from protosym.core.tree import TreeExpr
@@ -26,13 +24,7 @@ class ExprAtomType(Generic[T]):
     def __init__(self, name: str, typ: Type[T]) -> None:
         """New ExprAtomType."""
         self.name = name
-
-        if issubclass(typ, int):
-            self.atom_type = AtomTypeInt(name, typ)  # type:ignore
-        elif typ is str:
-            self.atom_type = AtomTypeStr(name, typ)  # type:ignore
-        else:
-            raise TypeError  # pragma: no cover
+        self.atom_type = AtomType(name, typ)
 
     def __repr__(self) -> str:
         """The name of the ExprAtomType."""
@@ -40,7 +32,7 @@ class ExprAtomType(Generic[T]):
 
     def __call__(self, value: T) -> Expr:
         """Create a new Atom as an Expr."""
-        atom = self.atom_type(value)  # type:ignore
+        atom = self.atom_type(value)
         return Expr(TreeAtom[T](atom))
 
 

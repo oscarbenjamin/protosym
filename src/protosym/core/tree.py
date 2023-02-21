@@ -12,16 +12,15 @@ from typing import TypeVar as _TypeVar
 from weakref import WeakValueDictionary as _WeakDict
 
 
-_T_co = _TypeVar("_T_co", bound=_Hashable, covariant=True)
+_T = _TypeVar("_T", bound=_Hashable)  # , covariant=True)
 
 
 if _TYPE_CHECKING:
-    from typing import Hashable
     from protosym.core.atom import Atom
 
 
-_all_tree_atoms: _WeakDict[Atom[Hashable], TreeAtom[Hashable]] = _WeakDict()
-_all_tree_nodes: _WeakDict[tuple[TreeExpr, ...], TreeNode] = _WeakDict()
+_all_tree_atoms = _WeakDict()  # type:ignore
+_all_tree_nodes = _WeakDict()  # type:ignore
 
 
 class TreeExpr:
@@ -30,10 +29,10 @@ class TreeExpr:
     Every :class:`TreeExpr` is actually either an instance of :class:`TreeAtom`
     for atomic expressions or :class:`TreeNode` for compound expressions.
 
-    >>> from protosym.core.atom import AtomTypeInt, AtomTypeStr
+    >>> from protosym.core.atom import AtomType
     >>> from protosym.core.tree import TreeAtom, TreeExpr, TreeNode
-    >>> Function = AtomTypeStr('Function', str)
-    >>> Integer = AtomTypeInt('Integer', int)
+    >>> Function = AtomType('Function', str)
+    >>> Integer = AtomType('Integer', int)
     >>> f = TreeAtom(Function('f'))
     >>> one = TreeAtom(Integer(1))
     >>> f
@@ -116,16 +115,16 @@ class TreeExpr:
         return TreeNode(*expressions)
 
 
-class TreeAtom(TreeExpr, _Generic[_T_co]):
+class TreeAtom(TreeExpr, _Generic[_T]):
     """Class for atomic tree expressions.
 
     A :class:`TreeAtom` wraps an :class:`Atom` as its internal ``value``
     attribute and then provides an empty :attr:`TreeExpr.children` attribute to
     match the interface expected of :class:`TreeExpr`.
 
-    >>> from protosym.core.atom import AtomTypeInt
+    >>> from protosym.core.atom import AtomType
     >>> from protosym.core.tree import TreeAtom
-    >>> Integer = AtomTypeInt('Integer', int)
+    >>> Integer = AtomType('Integer', int)
     >>> one = TreeAtom(Integer(1))
     >>> one
     TreeAtom(Integer(1))
@@ -146,19 +145,19 @@ class TreeAtom(TreeExpr, _Generic[_T_co]):
 
     __slots__ = ("value",)
 
-    value: Atom[_T_co]
+    value: Atom[_T]
 
-    def __new__(cls, value: Atom[_T_co]) -> TreeAtom[_T_co]:
+    def __new__(cls, value: Atom[_T]) -> TreeAtom[_T]:
         """Return a prevously created TreeAtom or a new one."""
         previous = _all_tree_atoms.get(value, None)
         if previous is not None:
-            return cast(TreeAtom[_T_co], previous)
+            return cast(TreeAtom[_T], previous)
 
         obj = object.__new__(cls)
         obj.children = ()
         obj.value = value
 
-        obj = cast(TreeAtom[_T_co], _all_tree_atoms.setdefault(value, obj))
+        obj = cast(TreeAtom[_T], _all_tree_atoms.setdefault(value, obj))
 
         return obj
 
@@ -179,10 +178,10 @@ class TreeNode(TreeExpr):
     :class:`TreeNode` we first need to construct :class:`TreeAtom` expressions
     to represent the children.
 
-    >>> from protosym.core.atom import AtomTypeInt, AtomTypeStr
+    >>> from protosym.core.atom import AtomType
     >>> from protosym.core.tree import TreeNode
-    >>> Integer = AtomTypeInt('Integer', int)
-    >>> Function = AtomTypeStr('Function', str)
+    >>> Integer = AtomType('Integer', int)
+    >>> Function = AtomType('Function', str)
     >>> one = TreeAtom(Integer(1))
     >>> cos = TreeAtom(Function('cos'))
     >>> cos(one)
@@ -208,7 +207,7 @@ class TreeNode(TreeExpr):
         """Return a prevously created TreeAtom or a new one."""
         previous = _all_tree_nodes.get(children, None)
         if previous is not None:
-            return previous
+            return previous  # type:ignore
 
         obj = object.__new__(cls)
         obj.children = children
@@ -235,10 +234,10 @@ def topological_sort(expression: TreeExpr) -> list[TreeExpr]:
 
     We first create some atom types and atoms:
 
-    >>> from protosym.core.atom import AtomTypeStr
+    >>> from protosym.core.atom import AtomType
     >>> from protosym.core.tree import TreeAtom
-    >>> Function = AtomTypeStr('Function', str)
-    >>> Symbol = AtomTypeStr('Symbol', str)
+    >>> Function = AtomType('Function', str)
+    >>> Symbol = AtomType('Symbol', str)
     >>> f = TreeAtom(Function('f'))
     >>> x = TreeAtom(Symbol('x'))
     >>> y = TreeAtom(Symbol('y'))

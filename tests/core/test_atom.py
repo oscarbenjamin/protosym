@@ -1,23 +1,16 @@
 from protosym.core.atom import Atom
 from protosym.core.atom import AtomType
-from protosym.core.atom import AtomTypeInt
-from protosym.core.atom import AtomTypeStr
 
 
 def test_AtomType() -> None:
     """Test creation and equality of AtomTypes."""
-    Integer = AtomTypeInt("Integer", int)
-    Symbol = AtomTypeStr("Symbol", str)
+    Integer = AtomType("Integer", int)
+    Symbol = AtomType("Symbol", str)
 
     assert isinstance(Integer, AtomType)
     assert isinstance(Symbol, AtomType)
-    assert isinstance(Integer, AtomTypeInt)
-    assert not isinstance(Integer, AtomTypeStr)
-    assert isinstance(Symbol, AtomTypeStr)
-    assert not isinstance(Symbol, AtomTypeInt)
-
-    assert type(Integer) is AtomTypeInt
-    assert type(Symbol) is AtomTypeStr
+    assert type(Integer) is AtomType
+    assert type(Symbol) is AtomType
     assert str(Integer) == repr(Integer) == "Integer"
     assert str(Symbol) == repr(Symbol) == "Symbol"
     assert (Integer == Integer) is True
@@ -28,8 +21,8 @@ def test_AtomType() -> None:
 
 def test_Atom() -> None:
     """Test creation and equality of Atoms."""
-    Integer = AtomTypeInt("Integer", int)
-    Symbol = AtomTypeStr("Symbol", str)
+    Integer = AtomType("Integer", int)
+    Symbol = AtomType("Symbol", str)
 
     one = Integer(1)
     zero = Integer(0)

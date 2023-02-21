@@ -1,6 +1,5 @@
 from protosym.core.atom import Atom
-from protosym.core.atom import AtomTypeInt
-from protosym.core.atom import AtomTypeStr
+from protosym.core.atom import AtomType
 from protosym.core.tree import topological_sort
 from protosym.core.tree import TreeAtom
 from protosym.core.tree import TreeExpr
@@ -9,8 +8,8 @@ from protosym.core.tree import TreeNode
 
 def test_TreeExpr_basic() -> None:
     """Test basic construction and equality of TreeExpr."""
-    Integer = AtomTypeInt("Integer", int)
-    Function = AtomTypeStr("Function", str)
+    Integer = AtomType("Integer", int)
+    Function = AtomType("Function", str)
     one_atom = Integer(1)
     f_atom = Function("f")
 
@@ -53,8 +52,8 @@ def test_TreeExpr_basic() -> None:
 
 def test_topological_sort() -> None:
     """Simple test for the topological_sort function."""
-    Function = AtomTypeStr("Function", str)
-    Symbol = AtomTypeStr("Symbol", str)
+    Function = AtomType("Function", str)
+    Symbol = AtomType("Symbol", str)
     f = TreeAtom(Function("f"))
     x = TreeAtom(Symbol("x"))
     y = TreeAtom(Symbol("y"))

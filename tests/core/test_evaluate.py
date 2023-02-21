@@ -1,16 +1,15 @@
 import math
 
-from protosym.core.atom import AtomTypeInt
-from protosym.core.atom import AtomTypeStr
+from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator
 from protosym.core.tree import TreeAtom
 
 
 def test_Evaluator() -> None:
     """Test defning and using a simple Evaluator."""
-    Integer = AtomTypeInt("Integer", int)
-    Function = AtomTypeStr("Function", str)
-    Symbol = AtomTypeStr("Symbol", str)
+    Integer = AtomType("Integer", int)
+    Function = AtomType("Function", str)
+    Symbol = AtomType("Symbol", str)
     one = TreeAtom(Integer(1))
     cos = TreeAtom(Function("cos"))
     sin = TreeAtom(Function("sin"))
