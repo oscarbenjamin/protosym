@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import cast
 from typing import Generic as _Generic
 from typing import Hashable as _Hashable
+from typing import Type
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import TypeVar as _TypeVar
 from weakref import WeakValueDictionary as _WeakDict
@@ -18,16 +19,8 @@ __all__ = [
 ]
 
 
-_T = _TypeVar("_T", bound=_Hashable)
-
 AnyValue = _Hashable
-
-
-if _TYPE_CHECKING:
-    from typing import Callable, Any
-
-    KeyType = tuple["AtomType[AnyValue]", AnyValue]
-    AtomStoreType = _WeakDict[KeyType, "Atom[AnyValue]"]
+_T = _TypeVar("_T", bound=AnyValue)
 
 
 #
@@ -43,7 +36,7 @@ class AtomType(_Generic[_T]):
     """Identifier to distinguish different kinds of atoms.
 
     :ivar name: Name of this :class:`AtomType`.
-    :ivar converter: Converter function for :attr:`Atom.value`.
+    :ivar typ: The :attr:`Atom.value` type for the associated atoms.
 
     An :class:`AtomType` is not an Expression but is used to construct atomic
     expressions.
@@ -52,6 +45,8 @@ class AtomType(_Generic[_T]):
     >>> Integer = AtomType('Integer', int)
     >>> Integer
     Integer
+    >>> Integer.typ
+    <class 'int'>
     >>> Integer(1)
     Integer(1)
     >>> Symbol = AtomType('Symbol', str)
@@ -60,7 +55,10 @@ class AtomType(_Generic[_T]):
     >>> Symbol('x')
     Symbol('x')
 
-    The second parameter to :class:`AtomType` is a converter that will convert
+    The second parameter to :class:`AtomType` is a ``type`` object representing
+    the type of the :attr:`Atom.value` attribute of any :class:`Atom` created
+    by this :class:`AtomType`.
+
     arguments to the expected internal type to be used for the internal
     ``value`` of any associated :class:`Atom`.
 
@@ -74,22 +72,21 @@ class AtomType(_Generic[_T]):
 
     __slots__ = (
         "name",
-        "converter",
+        "typ",
     )
 
     name: str
-    converter: Callable[[Any], Any]
+    typ: Type[_T]
 
-    def __init__(self, name: str, converter: Callable[[Any], Any]):
+    def __init__(self, name: str, typ: Type[_T]):
         """New type of Atom e.g. Integer or Symbol.
 
         Args:
             name (str): The name of this kind of Atom e.g. ``"Integer"``.
-            converter (function): Function for converting Python objects to the
-                internal value representation for this type of Atom e.g. `int`.
+            typ (type): The type of the values for this type of Atom e.g. `int`.
         """
         self.name = name
-        self.converter = converter
+        self.typ = typ
 
     def __repr__(self) -> str:
         """Name of the Atom as a string."""
