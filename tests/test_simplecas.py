@@ -4,6 +4,8 @@ from protosym.simplecas import Add
 from protosym.simplecas import cos
 from protosym.simplecas import Expr
 from protosym.simplecas import ExprAtomType
+from protosym.simplecas import expressify
+from protosym.simplecas import ExpressifyError
 from protosym.simplecas import Integer
 from protosym.simplecas import Mul
 from protosym.simplecas import negone
@@ -64,6 +66,20 @@ def test_simplecas_operations() -> None:
     assert two**x == Pow(two, x)
 
 
+def test_simplecas_operations_expressify() -> None:
+    """Test arithmetic operations with Expr."""
+    assert x + 2 == x + two == Add(x, two)
+    assert 2 + x == two + x == Add(two, x)
+    assert x - 2 == x - two == Add(x, Mul(negone, two))
+    assert 2 - x == two - x == Add(two, Mul(negone, x))
+    assert x * 2 == x * two == Mul(x, two)
+    assert 2 * x == two * x == Mul(two, x)
+    assert x / 2 == x / two == Mul(x, Pow(two, negone))
+    assert 2 / x == two / x == Mul(two, Pow(x, negone))
+    assert x**2 == x**two == Pow(x, two)
+    assert 2**x == two**x == Pow(two, x)
+
+
 def test_simplecas_operations_bad_type() -> None:
     """Test arithmetic operations fail for Expr and other types."""
     bad_pairs = [(x, ()), ((), x)]
@@ -73,6 +89,13 @@ def test_simplecas_operations_bad_type() -> None:
         raises(TypeError, lambda: op1 * op2)  # type:ignore
         raises(TypeError, lambda: op1 / op2)  # type:ignore
         raises(TypeError, lambda: op1**op2)  # type:ignore
+
+
+def test_simplecas_expressify() -> None:
+    """Test that the expressify function works in basic cases."""
+    assert expressify(1) == Integer(1)
+    assert expressify(x) == x
+    raises(ExpressifyError, lambda: expressify([]))
 
 
 def test_simplecas_repr() -> None:
