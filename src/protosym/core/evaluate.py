@@ -13,10 +13,6 @@ from protosym.core.tree import TreeAtom
 from protosym.core.tree import TreeExpr
 
 
-if _TYPE_CHECKING:
-    from typing import Optional
-
-
 __all__ = ["Evaluator"]
 
 
@@ -24,11 +20,19 @@ _T = TypeVar("_T")
 _S = TypeVar("_S")
 
 
+if _TYPE_CHECKING:
+    from typing import Optional, Iterable
+
+    op1 = Callable[[_T], _T]
+    op2 = Callable[[_T, _T], _T]
+    opN = Callable[[Iterable[_T]], _T]  # noqa
+
+
 class Evaluator(Generic[_T]):
     """Objects that evaluate expressions."""
 
     atoms: dict[AtomType[_AnyValue], Callable[[_AnyValue], _T]]
-    operations: dict[TreeExpr, Callable[[_T], _T]]
+    operations: dict[TreeExpr, tuple[Callable[..., _T], bool]]
 
     def __init__(self) -> None:
         """Create an empty evaluator."""
@@ -41,9 +45,26 @@ class Evaluator(Generic[_T]):
         func_cast = cast(Callable[[_AnyValue], _T], func)
         self.atoms[atom_type_cast] = func_cast
 
-    def add_operation(self, head: TreeExpr, func: Callable[[_T], _T]) -> None:
+    def add_op1(self, head: TreeExpr, func: op1[_T]) -> None:
         """Add an evaluation rule for a particular head."""
-        self.operations[head] = func
+        self.operations[head] = (func, True)
+
+    def add_op2(self, head: TreeExpr, func: op2[_T]) -> None:
+        """Add an evaluation rule for a particular head."""
+        self.operations[head] = (func, True)
+
+    def add_opN(self, head: TreeExpr, func: opN[_T]) -> None:  # noqa
+        """Add an evaluation rule for a particular head."""
+        self.operations[head] = (func, False)
+
+    def call(self, head: TreeExpr, argvals: Iterable[_T]) -> _T:
+        """Evaluate one function with some values."""
+        op_func, star_args = self.operations[head]
+        if star_args:
+            result = op_func(*argvals)
+        else:
+            result = op_func(argvals)
+        return result
 
     def evaluate(self, expr: TreeExpr, values: dict[TreeExpr, _T]) -> _T:
         """Evaluate the expression using the rules."""
@@ -56,9 +77,8 @@ class Evaluator(Generic[_T]):
         else:
             head = expr.children[0]
             children = expr.children[1:]
-            op_func = self.operations[head]
             childvals = [self.evaluate(c, values) for c in children]
-            return op_func(*childvals)
+            return self.call(head, childvals)
 
     def __call__(
         self, expr: TreeExpr, values: Optional[dict[TreeExpr, _T]] = None
