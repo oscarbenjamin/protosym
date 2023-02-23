@@ -206,6 +206,11 @@ class Expr:
         """Convert to a SymPy expression."""
         return to_sympy(self)
 
+    @classmethod
+    def from_sympy(cls, expr: Any) -> Expr:
+        """Create an ``Expr`` from a SymPy expression."""
+        return from_sympy(expr)
+
     def eval_f64(self, values: Optional[dict[Expr, float]] = None) -> float:
         """Evaluate the expression as a float."""
         values_rep = {}
@@ -247,6 +252,29 @@ def to_sympy(expr: Expr) -> Any:
     """Convert ``Expr`` to a SymPy expression."""
     eval_to_sympy = _get_eval_to_sympy()
     return eval_to_sympy(expr.rep)
+
+
+def from_sympy(expr: Any) -> Expr:
+    """Convert a SymPy expression to ``Expr``."""
+    sympy = __import__("sympy")
+
+    if expr.is_Integer:
+        return Integer(expr.p)
+    elif expr.is_Symbol:
+        return Symbol(expr.name)
+    elif expr.args:
+        args = [from_sympy(arg) for arg in expr.args]
+        if expr.is_Add:
+            return Add(*args)
+        elif expr.is_Mul:
+            return Mul(*args)
+        elif expr.is_Pow:
+            return Pow(*args)
+        elif isinstance(expr, sympy.sin):
+            return sin(*args)
+        elif isinstance(expr, sympy.cos):
+            return cos(*args)
+    raise NotImplementedError("Cannot convert " + type(expr).__name__)
 
 
 Integer = Expr.new_atom("Integer", int)

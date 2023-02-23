@@ -138,16 +138,30 @@ def test_simplecas_to_sympy() -> None:
     except ImportError:
         skip("SymPy not installed")
 
-    x_sympy = sympy.Symbol("x")
+    x_sym = sympy.Symbol("x")
+    sinx_sym = sympy.sin(x_sym)
+    cosx_sym = sympy.cos(x_sym)
 
     test_cases = [
-        (sin(x), sympy.sin(x_sympy)),
-        (cos(x), sympy.cos(x_sympy)),
-        (sin(x) ** 2 + cos(x) ** 2, sympy.sin(x_sympy) ** 2 + sympy.cos(x_sympy) ** 2),
-        (sin(x) * cos(x), sympy.sin(x_sympy) * sympy.cos(x_sympy)),
+        (sin(x), sinx_sym),
+        (cos(x), cosx_sym),
+        (cos(x) ** 2 + sin(x) ** 2, cosx_sym**2 + sinx_sym**2),
+        (cos(x) * sin(x), cosx_sym * sinx_sym),
     ]
     for expr, sympy_expr in test_cases:
+        # XXX: Converting to SymPy and back does not in general round-trip
+        # unless evaluate=False is used because SymPy otherwise modifies the
+        # expression implicitly. for now it is useful to be able to convert to
+        # SymPy and have it perform automatic evaluation but really there
+        # should be a way to create a SymPy expression passing evaluate=False.
+        #
+        # Provided SymPy's automatic evaluation is idempotent an evaluated
+        # SymPy expression will always round-trip through Expr though.
         assert expr.to_sympy() == sympy_expr
+        assert Expr.from_sympy(sympy_expr) == expr
+        assert expr == Expr.from_sympy(expr.to_sympy())
+        assert sympy_expr == Expr.from_sympy(sympy_expr).to_sympy()
+
         # _sympy_ is used by sympify
         assert expr._sympy_() == sympy_expr
         assert sympy.sympify(expr) == sympy_expr
@@ -156,6 +170,14 @@ def test_simplecas_to_sympy() -> None:
         # confusing. Unfortunately if sympify works then __eq__ will use it and
         # then compare the two objects. Maybe allowing sympify is a bad idea...
         assert expr == sympy_expr
+
+    # No reason why li(x) in particular should be considered invalid. This test
+    # just chooses an example of an expression that is not (yet) supported by
+    # simplecas to verify that the appropriate error is raised. If this passes
+    # in future because li support is added then a different example should be
+    # chosen.
+    raises(NotImplementedError, lambda: Expr.from_sympy(sympy.li(x_sym)))
+    raises(NotImplementedError, lambda: Expr.from_sympy(sympy.ord0))
 
 
 def test_simplecas_eval_f64() -> None:
