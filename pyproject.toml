@@ -46,6 +46,7 @@ gitpython = "^3.1.30"
 py = "^1.11.0"
 setuptools = "^67.3.2"
 pytest-coverage = "^0.0"
+sympy = "^1.11.1"
 
 
 [tool.poetry.group.utils.dependencies]
