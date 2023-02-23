@@ -1,12 +1,14 @@
 import math
+from typing import Callable
 
 from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator
 from protosym.core.tree import TreeAtom
+from protosym.core.tree import TreeExpr
 
 
 def test_Evaluator() -> None:
-    """Test defning and using a simple Evaluator."""
+    """Test defining and using a simple Evaluator."""
     Integer = AtomType("Integer", int)
     Function = AtomType("Function", str)
     Symbol = AtomType("Symbol", str)
@@ -25,6 +27,25 @@ def test_Evaluator() -> None:
     eval_f64.add_op2(Pow, pow)
     eval_f64.add_opn(Add, math.fsum)
 
-    assert eval_f64(sin(cos(one))) == 0.5143952585235492
-    assert eval_f64(sin(cos(x)), {x: 1.0}) == 0.5143952585235492
-    assert eval_f64(Add(Pow(sin(one), two), Pow(cos(one), two))) == 1.0
+    test_cases: list[tuple[TreeExpr, dict[TreeExpr, float], float]] = [
+        (sin(cos(one)), {}, 0.5143952585235492),
+        (sin(cos(x)), {x: 1.0}, 0.5143952585235492),
+        (Add(Pow(sin(one), two), Pow(cos(one), two)), {}, 1.0),
+    ]
+
+    # Test __call__ for which vals is optional
+    for expr, vals, expected in test_cases:
+        assert eval_f64(expr, vals) == expected
+        if vals == {}:
+            assert eval_f64(expr) == expected
+
+    # Test all implementations
+    eval_funcs: list[Callable[[TreeExpr, dict[TreeExpr, float]], float]] = [
+        eval_f64,
+        eval_f64.evaluate,
+        eval_f64.eval_recursive,
+        eval_f64.eval_forward,
+    ]
+    for expr, vals, expected in test_cases:
+        for func in eval_funcs:
+            assert func(expr, vals) == expected

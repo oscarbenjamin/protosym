@@ -9,6 +9,7 @@ from typing import TypeVar
 
 from protosym.core.atom import AnyValue as _AnyValue
 from protosym.core.atom import AtomType
+from protosym.core.tree import forward_graph
 from protosym.core.tree import TreeAtom
 from protosym.core.tree import TreeExpr
 
@@ -68,21 +69,50 @@ class Evaluator(Generic[_T]):
 
     def evaluate(self, expr: TreeExpr, values: dict[TreeExpr, _T]) -> _T:
         """Evaluate the expression using the registered rules."""
-        return self.eval_recursive(expr, values)
+        return self.eval_forward(expr, values)
 
     def eval_recursive(self, expr: TreeExpr, values: dict[TreeExpr, _T]) -> _T:
         """Evaluate the expression using recursion."""
         if expr in values:
+            # Use an explicit value if given
             return values[expr]
         elif isinstance(expr, TreeAtom):
+            # Convert an Atom to _T
             value = expr.value
             atom_func = self.atoms[value.atom_type]
             return atom_func(value.value)
         else:
+            # Recursively evaluate children and then apply this operation.
             head = expr.children[0]
             children = expr.children[1:]
-            childvals = [self.evaluate(c, values) for c in children]
-            return self.call(head, childvals)
+            argvals = [self.eval_recursive(c, values) for c in children]
+            return self.call(head, argvals)
+
+    def eval_forward(self, expr: TreeExpr, values: dict[TreeExpr, _T]) -> _T:
+        """Evaluate the expression using forward evaluation."""
+        # Convert expr to the forward graph representation
+        graph = forward_graph(expr)
+        stack = []
+
+        # Convert all atoms to _T
+        for atom in graph.atoms:
+            value_get = values.get(atom)
+            if value_get is not None:
+                value = value_get
+            else:
+                atom_value = atom.value  # type:ignore
+                atom_func = self.atoms[atom_value.atom_type]
+                value = atom_func(atom_value.value)
+            stack.append(value)
+
+        # Run forward evaluation through the operations
+        for head, indices in graph.operations:
+            argvals = [stack[i] for i in indices]
+            stack.append(self.call(head, argvals))
+
+        # Now stack is the values of the topological sort of expr and stack[-1]
+        # is the value of expr.
+        return stack[-1]
 
     def __call__(
         self, expr: TreeExpr, values: Optional[dict[TreeExpr, _T]] = None

@@ -353,9 +353,9 @@ def topological_split(
     """
     subexpressions = topological_sort(expr)
 
-    atoms = []
-    heads = set()
-    nodes = []
+    atoms: list[TreeExpr] = []
+    heads: set[TreeExpr] = set()
+    nodes: list[TreeExpr] = []
 
     for subexpr in subexpressions:
         children = subexpr.children
@@ -417,8 +417,8 @@ def forward_graph(expr: TreeExpr) -> ForwardGraph:
 
     num_atoms = len(atoms)
 
-    operations = []
-    indices = dict(zip(atoms, range(num_atoms)))
+    operations: list[tuple[TreeExpr, list[int]]] = []
+    indices: dict[TreeExpr, int] = dict(zip(atoms, range(num_atoms)))
 
     for index, subexpr in enumerate(nodes, num_atoms):
         head = subexpr.children[0]
