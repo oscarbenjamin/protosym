@@ -10,6 +10,7 @@ from typing import Optional
 from typing import Type
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import TypeVar
+from typing import Union
 from weakref import WeakValueDictionary as _WeakDict
 
 from protosym.core.atom import AtomType
@@ -67,22 +68,24 @@ def expressify(obj: Any) -> Expr:
 
 
 if _TYPE_CHECKING:
-    ExprBinOp = Callable[["Expr", Any], "Expr"]
+    Expressifiable = Union["Expr", int]
+    ExprBinOp = Callable[["Expr", "Expr"], "Expr"]
+    ExpressifyBinOp = Callable[["Expr", Expressifiable], "Expr"]
 
 
-def expressify_other(func: ExprBinOp) -> ExprBinOp:
+def expressify_other(method: ExprBinOp) -> ExpressifyBinOp:
     """Decorator to call ``expressify`` on operands in ``__add__`` etc."""
 
-    @wraps(func)
-    def bin_op(self: Expr, other: Any) -> Expr:
+    @wraps(method)
+    def expressify_method(self: Expr, other: Expressifiable) -> Expr:
         if not isinstance(other, Expr):
             try:
                 other = expressify(other)
             except ExpressifyError:
                 return NotImplemented
-        return func(self, other)
+        return method(self, other)
 
-    return bin_op
+    return expressify_method
 
 
 class Expr:
