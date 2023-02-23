@@ -23,7 +23,7 @@ def test_Evaluator() -> None:
     eval_f64.add_op1(cos, math.cos)
     eval_f64.add_op1(sin, math.sin)
     eval_f64.add_op2(Pow, pow)
-    eval_f64.add_opN(Add, math.fsum)
+    eval_f64.add_opn(Add, math.fsum)
 
     assert eval_f64(sin(cos(one))) == 0.5143952585235492
     assert eval_f64(sin(cos(x)), {x: 1.0}) == 0.5143952585235492

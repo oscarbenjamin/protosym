@@ -23,9 +23,9 @@ _S = TypeVar("_S")
 if _TYPE_CHECKING:
     from typing import Optional, Iterable
 
-    op1 = Callable[[_T], _T]
-    op2 = Callable[[_T, _T], _T]
-    opN = Callable[[Iterable[_T]], _T]  # noqa
+    Op1 = Callable[[_T], _T]
+    Op2 = Callable[[_T, _T], _T]
+    OpN = Callable[[Iterable[_T]], _T]
 
 
 class Evaluator(Generic[_T]):
@@ -45,15 +45,15 @@ class Evaluator(Generic[_T]):
         func_cast = cast(Callable[[_AnyValue], _T], func)
         self.atoms[atom_type_cast] = func_cast
 
-    def add_op1(self, head: TreeExpr, func: op1[_T]) -> None:
+    def add_op1(self, head: TreeExpr, func: Op1[_T]) -> None:
         """Add an evaluation rule for a particular head."""
         self.operations[head] = (func, True)
 
-    def add_op2(self, head: TreeExpr, func: op2[_T]) -> None:
+    def add_op2(self, head: TreeExpr, func: Op2[_T]) -> None:
         """Add an evaluation rule for a particular head."""
         self.operations[head] = (func, True)
 
-    def add_opN(self, head: TreeExpr, func: opN[_T]) -> None:  # noqa
+    def add_opn(self, head: TreeExpr, func: OpN[_T]) -> None:
         """Add an evaluation rule for a particular head."""
         self.operations[head] = (func, False)
 
