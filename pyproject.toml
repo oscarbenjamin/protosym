@@ -50,6 +50,7 @@ pytest-coverage = "^0.0"
 
 [tool.poetry.group.utils.dependencies]
 ipython = "^8.10.0"
+jupyter = "^1.0.0"
 
 [tool.poetry.scripts]
 protosym = "protosym.__main__:main"
