@@ -1,6 +1,10 @@
 from protosym.core.atom import Atom
 from protosym.core.atom import AtomType
+from protosym.core.tree import forward_graph
+from protosym.core.tree import ForwardGraph
+from protosym.core.tree import funcs_symbols
 from protosym.core.tree import topological_sort
+from protosym.core.tree import topological_split
 from protosym.core.tree import TreeAtom
 from protosym.core.tree import TreeExpr
 from protosym.core.tree import TreeNode
@@ -50,8 +54,14 @@ def test_TreeExpr_basic() -> None:
     assert f_tree(one_tree) is f_tree(one_tree)
 
 
-def test_topological_sort() -> None:
-    """Simple test for the topological_sort function."""
+def test_funcs_symbols() -> None:
+    """Test the funcs_symbols convenience function."""
+    [f, g], [x, y] = funcs_symbols(["f", "g"], ["x", "y"])
+    assert all(isinstance(e, TreeAtom) for e in [f, g, x, y])
+
+
+def test_topological_sort_split() -> None:
+    """Simple tests for topological_sort and topological_split."""
     Function = AtomType("Function", str)
     Symbol = AtomType("Symbol", str)
     f = TreeAtom(Function("f"))
@@ -72,3 +82,25 @@ def test_topological_sort() -> None:
     assert topological_sort(expr) == subexpressions[1:]
     assert topological_sort(expr, heads=False) == subexpressions[1:]
     assert topological_sort(expr, heads=True) == subexpressions
+
+    expected_split = (
+        [x, y],
+        {f},
+        [f(x, y), f(x), f(f(x), f(x, y)), f(f(x, y), f(f(x), f(x, y)))],
+    )
+    assert topological_split(expr) == expected_split
+
+
+def test_forward_graph() -> None:
+    """Basic test for the forward_graph function."""
+    [f, g], [x, y] = funcs_symbols(["f", "g"], ["x", "y"])
+
+    expr = f(y, f(x, g(y)))
+
+    expected = ForwardGraph(
+        [y, x],
+        {g, f},
+        [(g, [0]), (f, [1, 2]), (f, [0, 3])],
+    )
+
+    assert forward_graph(expr) == expected

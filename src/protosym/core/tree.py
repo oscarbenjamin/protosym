@@ -4,6 +4,7 @@ This module defines classes for representing expressions in top-down tree form.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 from typing import cast
 from typing import Generic as _Generic
@@ -11,6 +12,8 @@ from typing import Hashable as _Hashable
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import TypeVar as _TypeVar
 from weakref import WeakValueDictionary as _WeakDict
+
+from protosym.core.atom import AtomType
 
 
 _T = _TypeVar("_T", bound=_Hashable)  # , covariant=True)
@@ -230,21 +233,24 @@ class TreeNode(TreeExpr):
         return f"{head}({argstr})"
 
 
+def funcs_symbols(
+    function_names: list[str], symbol_names: list[str]
+) -> tuple[list[TreeAtom[str]], list[TreeAtom[str]]]:
+    """Convenience function to make some functions and symbols."""
+    Function = AtomType("Function", str)  # noqa
+    Symbol = AtomType("Symbol", str)  # noqa
+    functions = [TreeAtom(Function(name)) for name in function_names]
+    symbols = [TreeAtom(Symbol(name)) for name in symbol_names]
+    return functions, symbols
+
+
 def topological_sort(expression: TreeExpr, *, heads: bool = False) -> list[TreeExpr]:
     """List of subexpressions of a :class:`TreeExpr` sorted topologically.
 
-    We first create some atom types and atoms:
+    Create some functions and symbols and use them to make an expression:
 
-    >>> from protosym.core.atom import AtomType
-    >>> from protosym.core.tree import TreeAtom
-    >>> Function = AtomType('Function', str)
-    >>> Symbol = AtomType('Symbol', str)
-    >>> f = TreeAtom(Function('f'))
-    >>> x = TreeAtom(Symbol('x'))
-    >>> y = TreeAtom(Symbol('y'))
-
-    Now we are in a position to create a compound expression:
-
+    >>> from protosym.core.tree import funcs_symbols
+    >>> [f], [x, y] = funcs_symbols(['f'], ['x', 'y'])
     >>> expr = f(f(x, y), f(f(x)))
     >>> print(expr)
     f(f(x, y), f(f(x)))
@@ -274,6 +280,7 @@ def topological_sort(expression: TreeExpr, *, heads: bool = False) -> list[TreeE
     ========
 
     TreeExpr: The expression class that this function operates on.
+    topological_split: Splits the sort into atoms, heads and nodes.
     """
     #
     # We use a stack here rather than recursion so that there is no limit on
@@ -310,3 +317,129 @@ def topological_sort(expression: TreeExpr, *, heads: bool = False) -> list[TreeE
             expressions.append(top)
 
     return expressions
+
+
+def topological_split(
+    expr: TreeExpr,
+) -> tuple[list[TreeExpr], set[TreeExpr], list[TreeExpr]]:
+    """Topological sort split into atoms, heads and compound expressions.
+
+    First build an expression:
+
+    >>> from protosym.core.tree import funcs_symbols
+    >>> [f, g], [x, y] = funcs_symbols(['f', 'g'], ['x', 'y'])
+    >>> expr = f(g(x, y), y)
+    >>> print(expr)
+    f(g(x, y), y)
+
+    Now compute the topological split:
+
+    >>> atoms, heads, nodes = topological_split(expr)
+    >>> atoms == [x, y]
+    True
+    >>> heads == {f, g}
+    True
+    >>> nodes == [g(x, y), f(g(x, y), y)]
+    True
+
+    The nodes will be sorted topologically with each expression appearing
+    after all of its children.
+
+    See Also
+    ========
+
+    TreeExpr: The expression class that this operates on.
+    topological_sort: Topological sort as a list of all subexpressions.
+    """
+    subexpressions = topological_sort(expr)
+
+    atoms = []
+    heads = set()
+    nodes = []
+
+    for subexpr in subexpressions:
+        children = subexpr.children
+        if not children:
+            atoms.append(subexpr)
+        else:
+            heads.add(children[0])
+            nodes.append(subexpr)
+
+    return atoms, heads, nodes
+
+
+def forward_graph(expr: TreeExpr) -> ForwardGraph:
+    """Build a ``ForwardGraph`` from a ``TreeExpr``.
+
+    >>> from protosym.core.tree import funcs_symbols
+    >>> [f, g], [x, y] = funcs_symbols(['f', 'g'], ['x', 'y'])
+    >>> expr = f(g(x, y), y)
+    >>> print(expr)
+    f(g(x, y), y)
+
+    Now build the forward graph:
+
+    >>> from protosym.core.tree import forward_graph
+    >>> graph = forward_graph(expr)
+    >>> graph.atoms == [x, y]
+    True
+    >>> graph.heads == {f, g}
+    True
+    >>> graph.operations == [(g, [0, 1]), (f, [2, 1])]
+    True
+
+    The forward graph can be used to rebuild the expression through *forward
+    evaluation*:
+
+    >>> stack = list(graph.atoms)
+    >>> for head, indices in graph.operations:
+    ...     args = [stack[i] for i in indices]
+    ...     stack.append(head(*args))
+
+    Now ``stack`` is the topological sort of ``expr`` and ``stack[-1]`` is
+    ``expr``.
+
+    >>> from protosym.core.tree import topological_sort
+    >>> stack == [x, y, g(x, y), f(g(x, y), y)]
+    True
+    >>> stack == topological_sort(expr)
+    True
+    >>> stack[-1] == expr
+    True
+
+    See Also
+    ========
+
+    topological_sort
+    ForwardGraph: The class of the object returned.
+    """
+    atoms, heads, nodes = topological_split(expr)
+
+    num_atoms = len(atoms)
+
+    operations = []
+    indices = dict(zip(atoms, range(num_atoms)))
+
+    for index, subexpr in enumerate(nodes, num_atoms):
+        head = subexpr.children[0]
+        args = subexpr.children[1:]
+        arg_indices = [indices[e] for e in args]
+        operations.append((head, arg_indices))
+        indices[subexpr] = index
+
+    return ForwardGraph(atoms, heads, operations)
+
+
+@dataclass
+class ForwardGraph:
+    """Representation of an expression as a forward graph.
+
+    See Also
+    ========
+
+    TreeExpr: Representation of an expression as a tree.
+    """
+
+    atoms: list[TreeExpr]
+    heads: set[TreeExpr]
+    operations: list[tuple[TreeExpr, list[int]]]
