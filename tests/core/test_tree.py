@@ -68,4 +68,7 @@ def test_topological_sort() -> None:
         f(f(x), f(x, y)),
         f(f(x, y), f(f(x), f(x, y))),
     ]
-    assert topological_sort(expr) == subexpressions
+    # Passing heads=True will include f in the list.
+    assert topological_sort(expr) == subexpressions[1:]
+    assert topological_sort(expr, heads=False) == subexpressions[1:]
+    assert topological_sort(expr, heads=True) == subexpressions

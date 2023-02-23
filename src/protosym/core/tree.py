@@ -230,7 +230,7 @@ class TreeNode(TreeExpr):
         return f"{head}({argstr})"
 
 
-def topological_sort(expression: TreeExpr) -> list[TreeExpr]:
+def topological_sort(expression: TreeExpr, *, heads: bool = False) -> list[TreeExpr]:
     """List of subexpressions of a :class:`TreeExpr` sorted topologically.
 
     We first create some atom types and atoms:
@@ -255,13 +255,20 @@ def topological_sort(expression: TreeExpr) -> list[TreeExpr]:
 
     >>> for e in topological_sort(expr):
     ...     print(e)
-    f
     x
     y
     f(x, y)
     f(x)
     f(f(x))
     f(f(x, y), f(f(x)))
+
+    The ``heads`` parameter defaults to ``False`` meaning that heads are not
+    explicitly included in the list. Pass ``heads=True`` to include them.
+
+    >>> topological_sort(f(x, y)) == [x, y, f(x, y)]
+    True
+    >>> topological_sort(f(x, y), heads=True) == [f, x, y, f(x, y)]
+    True
 
     See Also
     ========
@@ -271,17 +278,24 @@ def topological_sort(expression: TreeExpr) -> list[TreeExpr]:
     #
     # We use a stack here rather than recursion so that there is no limit on
     # the recursion depth. Otherwise though this is really just the same as
-    # walking an expression tree top-down but using a set to avoid re-walking
-    # any repeating subexpressions. At the end though we get a structure that
-    # contains each subexpression exactly once with no repetition. That allows
-    # any calling routines to avoid needing to check or optimise for repeating
-    # subexpressions. This routine could be made more efficient but in usage it
-    # does not seem to be a major bottleneck compared to the ones processing
-    # its output.
+    # walking an expression tree recursively but using a set to avoid
+    # re-walking any repeating subexpressions. At the end though we get a
+    # structure that contains each subexpression exactly once with no
+    # repetition. That allows any calling routines to avoid needing to check or
+    # optimise for repeating subexpressions. This routine could be made more
+    # efficient but in usage it does not seem to be a major bottleneck compared
+    # to the ones processing its output.
     #
+    def get_children(expr: TreeExpr) -> list[TreeExpr]:
+        if heads:
+            children = expr.children
+        else:
+            children = expr.children[1:]
+        return list(children)[::-1]
+
     seen = set()
     expressions = []
-    stack = [(expression, list(expression.children)[::-1])]
+    stack = [(expression, get_children(expression))]
 
     while stack:
         top, children = stack[-1]
@@ -289,7 +303,7 @@ def topological_sort(expression: TreeExpr) -> list[TreeExpr]:
             child = children.pop()
             if child not in seen:
                 seen.add(child)
-                stack.append((child, list(child.children)[::-1]))
+                stack.append((child, get_children(child)))
                 break
         else:
             stack.pop()

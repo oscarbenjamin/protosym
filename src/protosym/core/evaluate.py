@@ -67,7 +67,11 @@ class Evaluator(Generic[_T]):
         return result
 
     def evaluate(self, expr: TreeExpr, values: dict[TreeExpr, _T]) -> _T:
-        """Evaluate the expression using the rules."""
+        """Evaluate the expression using the registered rules."""
+        return self.eval_recursive(expr, values)
+
+    def eval_recursive(self, expr: TreeExpr, values: dict[TreeExpr, _T]) -> _T:
+        """Evaluate the expression using recursion."""
         if expr in values:
             return values[expr]
         elif isinstance(expr, TreeAtom):
