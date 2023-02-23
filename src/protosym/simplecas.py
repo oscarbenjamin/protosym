@@ -117,6 +117,10 @@ class Expr:
         """Pretty string representation of the expression."""
         return self.eval_repr()
 
+    def _repr_latex_(self) -> str:
+        """Latex hook for IPython."""
+        return f"${self.eval_latex()}$"
+
     @classmethod
     def new_atom(cls, name: str, typ: Type[T]) -> ExprAtomType[T]:
         """Define a new AtomType."""
@@ -190,6 +194,10 @@ class Expr:
         """Pretty string e.g. "cos(x) + 1"."""
         return eval_repr(self.rep)
 
+    def eval_latex(self) -> str:
+        """Return a LaTeX representaton of the expression."""
+        return eval_latex(self.rep)
+
     def eval_f64(self, values: Optional[dict[Expr, float]] = None) -> float:
         """Evaluate the expression as a float."""
         values_rep = {}
@@ -232,3 +240,13 @@ eval_repr.add_op1(cos.rep, lambda a: f"cos({a})")
 eval_repr.add_op2(Pow.rep, lambda b, e: f"{b}**{e}")
 eval_repr.add_opn(Add.rep, lambda args: f'({" + ".join(args)})')
 eval_repr.add_opn(Mul.rep, lambda args: f'({"*".join(args)})')
+
+eval_latex = Evaluator[str]()
+eval_latex.add_atom(Integer.atom_type, str)
+eval_latex.add_atom(Symbol.atom_type, str)
+eval_latex.add_atom(Function.atom_type, str)
+eval_latex.add_op1(sin.rep, lambda a: rf"\sin({a})")
+eval_latex.add_op1(cos.rep, lambda a: rf"\cos({a})")
+eval_latex.add_op2(Pow.rep, lambda b, e: f"{b}^{{{e}}}")
+eval_latex.add_opn(Add.rep, lambda args: f'({" + ".join(args)})')
+eval_latex.add_opn(Mul.rep, lambda args: "(%s)" % r" \times ".join(args))

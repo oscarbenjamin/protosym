@@ -112,6 +112,24 @@ def test_simplecas_repr() -> None:
     assert str(x + x + x) == "((x + x) + x)"
 
 
+def test_simplecas_latex() -> None:
+    """Test basic operations with simplecas."""
+    assert x.eval_latex() == r"x"
+    assert y.eval_latex() == r"y"
+    assert sin(x).eval_latex() == r"\sin(x)"
+    assert sin(cos(x)).eval_latex() == r"\sin(\cos(x))"
+    assert (x + y).eval_latex() == r"(x + y)"
+    assert (one + two).eval_latex() == r"(1 + 2)"
+    assert (x * y).eval_latex() == r"(x \times y)"
+    assert (x**two).eval_latex() == r"x^{2}"
+    assert (x + x + x).eval_latex() == r"((x + x) + x)"
+
+
+def test_simplecase_repr_latex() -> None:
+    """Test IPython/Jupyter hook."""
+    assert sin(x)._repr_latex_() == r"$\sin(x)$"
+
+
 def test_simplecas_eval_f64() -> None:
     """Test basic float evaluation with eval_f64."""
     assert sin(cos(x)).eval_f64({x: 1.0}) == 0.5143952585235492
