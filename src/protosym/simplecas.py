@@ -6,6 +6,7 @@ from functools import wraps
 from typing import Any
 from typing import Callable
 from typing import Generic
+from typing import Iterable
 from typing import Optional
 from typing import Type
 from typing import TYPE_CHECKING as _TYPE_CHECKING
@@ -15,6 +16,7 @@ from weakref import WeakValueDictionary as _WeakDict
 
 from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator
+from protosym.core.tree import topological_sort
 from protosym.core.tree import TreeAtom
 from protosym.core.tree import TreeExpr
 
@@ -218,6 +220,14 @@ class Expr:
             values_rep = {e.rep: v for e, v in values.items()}
         return eval_f64(self.rep, values_rep)
 
+    def count_ops_tree(self) -> int:
+        """Count operations in ``Expr`` following tree representation."""
+        return count_ops_tree(self.rep)
+
+    def count_ops_graph(self) -> int:
+        """Count operations in ``Expr`` following tree representation."""
+        return len(topological_sort(self.rep))
+
 
 # Avoid importing SymPy if possible.
 _eval_to_sympy: Evaluator[Any] | None = None
@@ -321,3 +331,25 @@ eval_latex.add_op1(cos.rep, lambda a: rf"\cos({a})")
 eval_latex.add_op2(Pow.rep, lambda b, e: f"{b}^{{{e}}}")
 eval_latex.add_opn(Add.rep, lambda args: f'({" + ".join(args)})')
 eval_latex.add_opn(Mul.rep, lambda args: "(%s)" % r" \times ".join(args))
+
+
+def _op1(a: int | str) -> int:
+    return 1
+
+
+def _sum1(*a: int) -> int:
+    return 1 + sum(a)
+
+
+def _sum1n(a: Iterable[int]) -> int:
+    return 1 + sum(a)
+
+
+count_ops_tree = Evaluator[int]()
+count_ops_tree.add_atom(Integer.atom_type, _op1)
+count_ops_tree.add_atom(Symbol.atom_type, _op1)
+count_ops_tree.add_op1(sin.rep, _sum1)
+count_ops_tree.add_op1(cos.rep, _sum1)
+count_ops_tree.add_op2(Pow.rep, _sum1)
+count_ops_tree.add_opn(Add.rep, _sum1n)
+count_ops_tree.add_opn(Mul.rep, _sum1n)

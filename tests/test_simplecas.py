@@ -190,3 +190,28 @@ def test_simplecas_eval_f64() -> None:
     assert (x**two).eval_f64({x: 2.0}) == 4.0
     assert x.eval_f64({x: 1.0}) == 1.0
     assert one.eval_f64() == 1.0
+
+
+def test_count_ops() -> None:
+    """Test count_ops_graph and count_ops_tree."""
+
+    def make_expression(n: int) -> Expr:
+        e = x**2 + x
+        for _ in range(n):
+            e = e**2 + e
+        return e
+
+    test_cases = [
+        (x, 1, 1),
+        (one, 1, 1),
+        (sin(x), 2, 2),
+        (sin(sin(x)) + sin(x), 4, 6),
+        (sin(x) ** 2 + sin(x), 5, 7),
+        (make_expression(10), 24, 8189),
+        (make_expression(20), 44, 8388605),
+        (make_expression(100), 204, 10141204801825835211973625643005),
+    ]
+
+    for expr, ops_graph, ops_tree in test_cases:
+        assert expr.count_ops_graph() == ops_graph
+        assert expr.count_ops_tree() == ops_tree
