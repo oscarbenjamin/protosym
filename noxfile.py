@@ -115,10 +115,14 @@ def safety(session: Session) -> None:
         "safety",
         "check",
         # "--full-report",
+        # Using --output bare below because otherwise safety is too verbose.
+        # Unfortunately it means that any failure message is not shown so
+        # comment these lines oput if safety fails.
         "--output",
         "bare",
         f"--file={requirements}",
         "--ignore=51457",  # https://github.com/pytest-dev/py/issues/287
+        "--ignore=51549",  # https://github.com/mpmath/mpmath/issues/548
     )
 
 
@@ -136,7 +140,7 @@ def mypy(session: Session) -> None:
 @session(python=python_versions)
 def tests(session: Session) -> None:
     """Run the test suite."""
-    session.install(".")
+    session.install(".", "sympy")
     session.install("coverage[toml]", "pytest", "pygments")
     try:
         session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)

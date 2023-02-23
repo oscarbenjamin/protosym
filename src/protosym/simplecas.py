@@ -121,6 +121,10 @@ class Expr:
         """Latex hook for IPython."""
         return f"${self.eval_latex()}$"
 
+    def _sympy_(self) -> Any:
+        """Hook for SymPy's ``sympify`` function."""
+        return self.to_sympy()
+
     @classmethod
     def new_atom(cls, name: str, typ: Type[T]) -> ExprAtomType[T]:
         """Define a new AtomType."""
@@ -198,12 +202,51 @@ class Expr:
         """Return a LaTeX representaton of the expression."""
         return eval_latex(self.rep)
 
+    def to_sympy(self) -> Any:
+        """Convert to a SymPy expression."""
+        return to_sympy(self)
+
     def eval_f64(self, values: Optional[dict[Expr, float]] = None) -> float:
         """Evaluate the expression as a float."""
         values_rep = {}
         if values is not None:
             values_rep = {e.rep: v for e, v in values.items()}
         return eval_f64(self.rep, values_rep)
+
+
+# Avoid importing SymPy if possible.
+_eval_to_sympy: Evaluator[Any] | None = None
+
+
+def _get_eval_to_sympy() -> Evaluator[Any]:
+    """Return an evaluator for converting to SymPy."""
+    global _eval_to_sympy
+    if _eval_to_sympy is not None:
+        return _eval_to_sympy
+
+    # We import sympy like this so that mypy ignores it
+    sympy = __import__("sympy")
+
+    eval_to_sympy = Evaluator[Any]()
+    eval_to_sympy.add_atom(Integer.atom_type, sympy.Integer)
+    eval_to_sympy.add_atom(Symbol.atom_type, sympy.Symbol)
+    eval_to_sympy.add_atom(Function.atom_type, sympy.Function)
+    eval_to_sympy.add_op1(sin.rep, sympy.sin)
+    eval_to_sympy.add_op1(cos.rep, sympy.cos)
+    eval_to_sympy.add_op2(Pow.rep, sympy.Pow)
+    eval_to_sympy.add_opn(Add.rep, lambda a: sympy.Add(*a))
+    eval_to_sympy.add_opn(Mul.rep, lambda a: sympy.Mul(*a))
+
+    # Store in the global to avoid recreating the Evaluator
+    _eval_to_sympy = eval_to_sympy
+
+    return eval_to_sympy
+
+
+def to_sympy(expr: Expr) -> Any:
+    """Convert ``Expr`` to a SymPy expression."""
+    eval_to_sympy = _get_eval_to_sympy()
+    return eval_to_sympy(expr.rep)
 
 
 Integer = Expr.new_atom("Integer", int)

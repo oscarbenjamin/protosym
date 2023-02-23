@@ -1,4 +1,5 @@
 from pytest import raises
+from pytest import skip
 
 from protosym.simplecas import Add
 from protosym.simplecas import cos
@@ -125,9 +126,36 @@ def test_simplecas_latex() -> None:
     assert (x + x + x).eval_latex() == r"((x + x) + x)"
 
 
-def test_simplecase_repr_latex() -> None:
+def test_simplecas_repr_latex() -> None:
     """Test IPython/Jupyter hook."""
     assert sin(x)._repr_latex_() == r"$\sin(x)$"
+
+
+def test_simplecas_to_sympy() -> None:
+    """Test converting a simplecas expression to a SymPy expression."""
+    try:
+        sympy = __import__("sympy")
+    except ImportError:
+        skip("SymPy not installed")
+
+    x_sympy = sympy.Symbol("x")
+
+    test_cases = [
+        (sin(x), sympy.sin(x_sympy)),
+        (cos(x), sympy.cos(x_sympy)),
+        (sin(x) ** 2 + cos(x) ** 2, sympy.sin(x_sympy) ** 2 + sympy.cos(x_sympy) ** 2),
+        (sin(x) * cos(x), sympy.sin(x_sympy) * sympy.cos(x_sympy)),
+    ]
+    for expr, sympy_expr in test_cases:
+        assert expr.to_sympy() == sympy_expr
+        # _sympy_ is used by sympify
+        assert expr._sympy_() == sympy_expr
+        assert sympy.sympify(expr) == sympy_expr
+
+        # XXX: Ideally these would not compare equal because it could get
+        # confusing. Unfortunately if sympify works then __eq__ will use it and
+        # then compare the two objects. Maybe allowing sympify is a bad idea...
+        assert expr == sympy_expr
 
 
 def test_simplecas_eval_f64() -> None:
