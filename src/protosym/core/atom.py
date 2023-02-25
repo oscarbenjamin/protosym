@@ -173,7 +173,7 @@ class Atom(_Generic[_T]):
 
         previous = _all_atoms.get(key, None)
         if previous is not None:
-            return cast(Atom[_T], previous)
+            return cast("Atom[_T]", previous)
 
         obj = object.__new__(cls)
         obj.atom_type = atom_type

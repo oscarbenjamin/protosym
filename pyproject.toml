@@ -48,6 +48,7 @@ setuptools = "^67.4.0"
 pytest-coverage = "^0.0"
 sympy = "^1.11.1"
 pip-upgrader = "^1.4.15"
+flake8-type-checking = "^2.3.0"
 
 
 [tool.poetry.group.utils.dependencies]

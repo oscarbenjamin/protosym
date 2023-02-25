@@ -155,13 +155,13 @@ class TreeAtom(TreeExpr, _Generic[_T]):
         """Return a prevously created TreeAtom or a new one."""
         previous = _all_tree_atoms.get(value, None)
         if previous is not None:
-            return cast(TreeAtom[_T], previous)
+            return cast("TreeAtom[_T]", previous)
 
         obj = object.__new__(cls)
         obj.children = ()
         obj.value = value
 
-        obj = cast(TreeAtom[_T], _all_tree_atoms.setdefault(value, obj))
+        obj = cast("TreeAtom[_T]", _all_tree_atoms.setdefault(value, obj))
 
         return obj
 

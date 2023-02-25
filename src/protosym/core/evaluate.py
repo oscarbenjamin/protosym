@@ -7,11 +7,14 @@ from typing import Generic
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import TypeVar
 
-from protosym.core.atom import AnyValue as _AnyValue
-from protosym.core.atom import AtomType
 from protosym.core.tree import forward_graph
 from protosym.core.tree import TreeAtom
-from protosym.core.tree import TreeExpr
+
+
+if _TYPE_CHECKING:
+    from protosym.core.tree import TreeExpr
+    from protosym.core.atom import AnyValue as _AnyValue
+    from protosym.core.atom import AtomType
 
 
 __all__ = ["Evaluator"]
@@ -42,8 +45,8 @@ class Evaluator(Generic[_T]):
 
     def add_atom(self, atom_type: AtomType[_S], func: Callable[[_S], _T]) -> None:
         """Add an evaluation rule for a particular AtomType."""
-        atom_type_cast = cast(AtomType[_AnyValue], atom_type)
-        func_cast = cast(Callable[[_AnyValue], _T], func)
+        atom_type_cast = cast("AtomType[_AnyValue]", atom_type)
+        func_cast = cast("Callable[[_AnyValue], _T]", func)
         self.atoms[atom_type_cast] = func_cast
 
     def add_op1(self, head: TreeExpr, func: Op1[_T]) -> None:
