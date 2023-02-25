@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.3.0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4.5.0
@@ -65,7 +65,7 @@ jobs:
               fout.write("result={}\n".format(result))
 
       - name: Restore pre-commit cache
-        uses: actions/cache@v3.2.5
+        uses: actions/cache@v3.2.6
         if: matrix.session == 'pre-commit'
         with:
           path: ~/.cache/pre-commit
@@ -79,14 +79,14 @@ jobs:
 
       - name: Upload coverage data
         if: always() && matrix.session == 'tests'
-        uses: "actions/upload-artifact@v3"
+        uses: "actions/upload-artifact@v3.1.2"
         with:
           name: coverage-data
           path: ".coverage.*"
 
       - name: Upload documentation
         if: matrix.session == 'docs-build'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.2
         with:
           name: docs
           path: docs/_build
@@ -96,7 +96,7 @@ jobs:
     needs: tests
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.3.0
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v4.5.0
@@ -132,4 +132,4 @@ jobs:
           nox --force-color --session=coverage -- xml
 
       - name: Upload coverage report
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v3.1.1
