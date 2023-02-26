@@ -239,8 +239,7 @@ def _get_eval_to_sympy() -> Evaluator[Any]:
     if _eval_to_sympy is not None:
         return _eval_to_sympy
 
-    # We import sympy like this so that mypy ignores it
-    sympy = __import__("sympy")
+    import sympy
 
     eval_to_sympy = Evaluator[Any]()
     eval_to_sympy.add_atom(Integer.atom_type, sympy.Integer)
@@ -266,7 +265,7 @@ def to_sympy(expr: Expr) -> Any:
 
 def from_sympy(expr: Any) -> Expr:
     """Convert a SymPy expression to ``Expr``."""
-    sympy = __import__("sympy")
+    import sympy
 
     if expr.is_Integer:
         return Integer(expr.p)
