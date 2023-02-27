@@ -16,6 +16,7 @@ from protosym.simplecas import sin
 from protosym.simplecas import Symbol
 from protosym.simplecas import x
 from protosym.simplecas import y
+from protosym.simplecas import zero
 
 
 two = Integer(2)
@@ -192,7 +193,7 @@ def test_simplecas_eval_f64() -> None:
     assert one.eval_f64() == 1.0
 
 
-def test_count_ops() -> None:
+def test_simplecas_count_ops() -> None:
     """Test count_ops_graph and count_ops_tree."""
 
     def make_expression(n: int) -> Expr:
@@ -215,3 +216,17 @@ def test_count_ops() -> None:
     for expr, ops_graph, ops_tree in test_cases:
         assert expr.count_ops_graph() == ops_graph
         assert expr.count_ops_tree() == ops_tree
+
+
+def test_simplecas_differentation() -> None:
+    """Test derivatives of simplecas expressions."""
+    assert one.diff(x) == zero
+    assert x.diff(x) == one
+    assert sin(1).diff(x) == zero
+    assert (2 * sin(x)).diff(x) == 2 * cos(x)
+    assert (x**3).diff(x) == 3 * x ** (Add(3, -1))
+    assert sin(x).diff(x) == cos(x)
+    assert cos(x).diff(x) == -sin(x)
+    assert (sin(x) + cos(x)).diff(x) == cos(x) + -1 * sin(x)
+    assert (sin(x) ** 2).diff(x) == 2 * sin(x) ** Add(2, -1) * cos(x)
+    assert (x * sin(x)).diff(x) == 1 * sin(x) + x * cos(x)

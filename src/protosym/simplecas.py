@@ -16,6 +16,7 @@ from weakref import WeakValueDictionary as _WeakDict
 
 from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator
+from protosym.core.tree import forward_graph
 from protosym.core.tree import topological_sort
 from protosym.core.tree import TreeAtom
 from protosym.core.tree import TreeExpr
@@ -132,7 +133,7 @@ class Expr:
         """Define a new AtomType."""
         return ExprAtomType[T](name, typ)
 
-    def __call__(self, *args: Expr) -> Expr:
+    def __call__(self, *args: Expressifiable) -> Expr:
         """Call this Expr as a function."""
         args_expr = [expressify(arg) for arg in args]
         args_rep = [arg.rep for arg in args_expr]
@@ -227,6 +228,19 @@ class Expr:
     def count_ops_graph(self) -> int:
         """Count operations in ``Expr`` following tree representation."""
         return len(topological_sort(self.rep))
+
+    def diff(self, sym: Expr, ntimes: int = 1) -> Expr:
+        """Differentiate ``expr`` wrt ``sym``.
+
+        >>> from protosym.simplecas import x, sin
+        >>> sin(x).diff(x)
+        cos(x)
+        """
+        deriv_rep = self.rep
+        sym_rep = sym.rep
+        for _ in range(ntimes):
+            deriv_rep = _diff_forward(deriv_rep, sym_rep)
+        return Expr(deriv_rep)
 
 
 # Avoid importing SymPy if possible.
@@ -352,3 +366,97 @@ count_ops_tree.add_op1(cos.rep, _sum1)
 count_ops_tree.add_op2(Pow.rep, _sum1)
 count_ops_tree.add_opn(Add.rep, _sum1n)
 count_ops_tree.add_opn(Mul.rep, _sum1n)
+
+
+#
+# We will need to think of a better structure for differentiation. Ideally it
+# would be implemented as a generic routine in core but it really needs to know
+# about Add, Mul, Pow, Integer etc so for now we implement it here. Probably
+# what is needed is something like a differentiation "context" object that
+# provides the necessary Add, Mul, Pow, zero, one etc that could be passed into
+# the core differentiation routine along with the special case rules like
+# sin->cos.
+#
+# Certainly differentiation is an example that blurs a bit the line between
+# having a generic core that is agnostic to the kinds of expressions that we
+# want to operate on and then defining everything else outside the core.
+#
+
+
+derivatives: dict[tuple[TreeExpr, int], Callable[..., TreeExpr]] = {
+    (sin.rep, 0): cos.rep,
+    (cos.rep, 0): lambda e: Mul.rep(negone.rep, sin.rep(e)),
+    (Pow.rep, 0): lambda b, e: Mul.rep(e, Pow.rep(b, Add.rep(e, negone.rep))),
+}
+
+
+def _prod_rule_forward(
+    args: list[TreeExpr], diff_args: list[TreeExpr]
+) -> list[TreeExpr]:
+    """Product rule in forward accumulation."""
+    terms: list[TreeExpr] = []
+    for n, diff_arg in enumerate(diff_args):
+        if diff_arg != zero.rep:
+            term = Mul.rep(*args[:n], diff_arg, *args[n + 1 :])
+            terms.append(term)
+    return terms
+
+
+def _chain_rule_forward(
+    func: TreeExpr, args: list[TreeExpr], diff_args: list[TreeExpr]
+) -> list[TreeExpr]:
+    """Chain rule in forward accumulation."""
+    terms: list[TreeExpr] = []
+    for n, diff_arg in enumerate(diff_args):
+        if diff_arg != zero.rep:
+            pdiff = derivatives[(func, n)]
+            diff_term = pdiff(*args)
+            if diff_arg != one.rep:
+                diff_term = Mul.rep(diff_term, diff_arg)
+            terms.append(diff_term)
+    return terms
+
+
+def _diff_forward(expression: TreeExpr, sym: TreeExpr) -> TreeExpr:
+    """Derivative of expression wrt sym.
+
+    Uses forward accumulation algorithm.
+    """
+    #
+    # Using rep everywhere here shows that we are probably implementing this at
+    # the wrong level.
+    #
+
+    graph = forward_graph(expression)
+
+    stack = list(graph.atoms)
+    diff_stack = [one.rep if expr == sym else zero.rep for expr in stack]
+
+    for func, indices in graph.operations:
+        args = [stack[i] for i in indices]
+        diff_args = [diff_stack[i] for i in indices]
+        expr = func(*args)
+
+        if set(diff_args) == {zero.rep}:
+            diff_terms = []
+        elif func == Add.rep:
+            diff_terms = [da for da in diff_args if da != zero.rep]
+        elif func == Mul.rep:
+            diff_terms = _prod_rule_forward(args, diff_args)
+        else:
+            diff_terms = _chain_rule_forward(func, args, diff_args)
+
+        if not diff_terms:
+            derivative = zero.rep
+        elif len(diff_terms) == 1:
+            derivative = diff_terms[0]
+        else:
+            derivative = Add.rep(*diff_terms)
+
+        stack.append(expr)
+        diff_stack.append(derivative)
+
+    # At this point stack is a topological sort of expr and diff_stack is the
+    # list of derivatives of every subexpression in expr. At the top of the
+    # stack is expr and its derivative is at the top of diff_stack.
+    return diff_stack[-1]
