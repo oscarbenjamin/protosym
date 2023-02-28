@@ -1,4 +1,3 @@
-import pytest
 from pytest import raises
 from pytest import skip
 
@@ -8,7 +7,7 @@ from protosym.simplecas import Expr
 from protosym.simplecas import ExprAtomType
 from protosym.simplecas import expressify
 from protosym.simplecas import ExpressifyError
-from protosym.simplecas import Function
+from protosym.simplecas import f
 from protosym.simplecas import Integer
 from protosym.simplecas import Mul
 from protosym.simplecas import negone
@@ -22,7 +21,6 @@ from protosym.simplecas import zero
 
 
 two = Integer(2)
-f = Function("f")
 
 
 def test_simplecas_types() -> None:
@@ -110,6 +108,7 @@ def test_simplecas_repr() -> None:
     assert str(y) == "y"
     assert str(f) == "f"
     assert str(sin) == "sin"
+    assert str(f(x)) == "f(x)"
     assert str(sin(cos(x))) == "sin(cos(x))"
     assert str(x + y) == "(x + y)"
     assert str(one + two) == "(1 + 2)"
@@ -118,25 +117,11 @@ def test_simplecas_repr() -> None:
     assert str(x + x + x) == "((x + x) + x)"
 
 
-@pytest.mark.xfail
-def test_simplecas_repr_xfail() -> None:
-    """Test printing an undefined function."""
-    #
-    # This fails because Evaluator expects every function to be defined. There
-    # is a printing rule for Function but that only handles an uncalled
-    # function like f rather than f(x). There needs to be a way to give a
-    # default rule to an Evaluator for handling the cases where there is no
-    # operation rule defined for the head.
-    #
-    assert str(f(x)) == "f(x)"
-    assert repr(f(x)) == "f(x)"
-    assert f(x).eval_latex() == "f(x)"
-
-
 def test_simplecas_latex() -> None:
     """Test basic operations with simplecas."""
     assert x.eval_latex() == r"x"
     assert y.eval_latex() == r"y"
+    assert f(x).eval_latex() == "f(x)"
     assert sin(x).eval_latex() == r"\sin(x)"
     assert sin(cos(x)).eval_latex() == r"\sin(\cos(x))"
     assert (x + y).eval_latex() == r"(x + y)"
