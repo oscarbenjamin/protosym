@@ -7,7 +7,6 @@ from functools import wraps
 from typing import Any
 from typing import Callable
 from typing import Generic
-from typing import Iterable
 from typing import Optional
 from typing import Type
 from typing import TYPE_CHECKING as _TYPE_CHECKING
@@ -254,7 +253,7 @@ class Expr:
         >>> expr.bin_expand()
         (((1 + 2) + 3) + 4)
         """
-        return Expr(_bin_expand(self.rep))
+        return Expr(bin_expand(self.rep))
 
 
 # Avoid importing SymPy if possible.
@@ -325,6 +324,9 @@ negone = Integer(-1)
 x = Symbol("x")
 y = Symbol("y")
 
+f = Function("f")
+g = Function("g")
+
 Pow = Function("pow")
 sin = Function("sin")
 cos = Function("cos")
@@ -343,6 +345,7 @@ eval_repr = Evaluator[str]()
 eval_repr.add_atom(Integer.atom_type, str)
 eval_repr.add_atom(Symbol.atom_type, str)
 eval_repr.add_atom(Function.atom_type, str)
+eval_repr.add_op_generic(lambda head, args: f'{head}({", ".join(args)})')
 eval_repr.add_op1(sin.rep, lambda a: f"sin({a})")
 eval_repr.add_op1(cos.rep, lambda a: f"cos({a})")
 eval_repr.add_op2(Pow.rep, lambda b, e: f"{b}**{e}")
@@ -353,37 +356,24 @@ eval_latex = Evaluator[str]()
 eval_latex.add_atom(Integer.atom_type, str)
 eval_latex.add_atom(Symbol.atom_type, str)
 eval_latex.add_atom(Function.atom_type, str)
+eval_latex.add_op_generic(lambda head, args: f'{head}({", ".join(args)})')
 eval_latex.add_op1(sin.rep, lambda a: rf"\sin({a})")
 eval_latex.add_op1(cos.rep, lambda a: rf"\cos({a})")
 eval_latex.add_op2(Pow.rep, lambda b, e: f"{b}^{{{e}}}")
 eval_latex.add_opn(Add.rep, lambda args: f'({" + ".join(args)})')
 eval_latex.add_opn(Mul.rep, lambda args: "(%s)" % r" \times ".join(args))
 
-_bin_expand = Transformer()
-_bin_expand.add_opn(Add.rep, lambda args: reduce(Add.rep, args))
-_bin_expand.add_opn(Mul.rep, lambda args: reduce(Mul.rep, args))
+bin_expand = Transformer()
+bin_expand.add_opn(Add.rep, lambda args: reduce(Add.rep, args))
+bin_expand.add_opn(Mul.rep, lambda args: reduce(Mul.rep, args))
 
-
-def _op1(a: int | str) -> int:
-    return 1
-
-
-def _sum1(*a: int) -> int:
-    return 1 + sum(a)
-
-
-def _sum1n(a: Iterable[int]) -> int:
-    return 1 + sum(a)
-
-
+#
+# Maybe it should be possible to just pass these as arguments to the Evaluator
+# constructor.
+#
 count_ops_tree = Evaluator[int]()
-count_ops_tree.add_atom(Integer.atom_type, _op1)
-count_ops_tree.add_atom(Symbol.atom_type, _op1)
-count_ops_tree.add_op1(sin.rep, _sum1)
-count_ops_tree.add_op1(cos.rep, _sum1)
-count_ops_tree.add_op2(Pow.rep, _sum1)
-count_ops_tree.add_opn(Add.rep, _sum1n)
-count_ops_tree.add_opn(Mul.rep, _sum1n)
+count_ops_tree.add_atom_generic(lambda atom: 1)
+count_ops_tree.add_op_generic(lambda head, argcounts: 1 + sum(argcounts))
 
 
 #

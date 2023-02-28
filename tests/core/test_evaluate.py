@@ -60,6 +60,8 @@ def test_Transformer() -> None:
     """Test defining and using a Transformer."""
     [f, g], [x, y] = funcs_symbols(["f", "g"], ["x", "y"])
 
+    # A Transformer is an Evaluator that evaluates to a TreeExpr and provides
+    # defaults.
     f2g = Transformer()
     f2g.add_opn(f, lambda args: g(*args))
     expr = f(g(x, f(y)), y)
@@ -68,4 +70,14 @@ def test_Transformer() -> None:
     # With Evaluator the above would fail without rules for Symbol and g:
     f2g_eval = Evaluator[TreeExpr]()
     f2g_eval.add_opn(f, lambda args: g(*args))
+
+    # We need a rule for unknown atoms:
     raises(NoEvaluationRuleError, lambda: f2g_eval(expr))
+    f2g_eval.add_atom_generic(lambda atom: atom)  # type: ignore
+
+    # We need a rule for unknown heads:
+    raises(NoEvaluationRuleError, lambda: f2g_eval(expr))
+    f2g_eval.add_op_generic(lambda head, args: head(*args))
+
+    # Now it should work:
+    assert f2g(expr) == g(g(x, g(y)), y)
