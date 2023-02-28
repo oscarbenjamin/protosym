@@ -85,7 +85,7 @@ class Evaluator(Generic[_T]):
     >>> expr2 = cos(x)
     >>> print(expr2)
     cos(x)
-    >>> evalf(expr2, {x:1.0})
+    >>> evalf(expr2, {x: 1.0})
     0.5403023058681398
     """
 
@@ -240,7 +240,7 @@ class Transformer(Evaluator[TreeExpr]):
     >>> expr = f(g(x, f(y)), y)
     >>> f2g_eval = Evaluator[TreeExpr]()
     >>> f2g_eval.add_opn(f, lambda args: g(*args))
-    >>> f2g_eval(expr) # doctest: +NORMALIZE_WHITESPACE
+    >>> f2g_eval(expr)  # doctest: +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
         ...
     protosym.core.exceptions.NoEvaluationRuleError: No rule for atom:
@@ -250,7 +250,7 @@ class Transformer(Evaluator[TreeExpr]):
     rule for ``g``:
 
     >>> f2g_eval.add_atom_generic(str)
-    >>> f2g_eval(expr) # doctest: +NORMALIZE_WHITESPACE
+    >>> f2g_eval(expr)  # doctest: +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
         ...
     protosym.core.exceptions.NoEvaluationRuleError: No rule for head:
