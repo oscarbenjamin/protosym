@@ -1,3 +1,4 @@
+import pytest
 from pytest import raises
 from pytest import skip
 
@@ -7,6 +8,7 @@ from protosym.simplecas import Expr
 from protosym.simplecas import ExprAtomType
 from protosym.simplecas import expressify
 from protosym.simplecas import ExpressifyError
+from protosym.simplecas import Function
 from protosym.simplecas import Integer
 from protosym.simplecas import Mul
 from protosym.simplecas import negone
@@ -20,6 +22,7 @@ from protosym.simplecas import zero
 
 
 two = Integer(2)
+f = Function("f")
 
 
 def test_simplecas_types() -> None:
@@ -105,6 +108,7 @@ def test_simplecas_repr() -> None:
     assert str(Integer) == "Integer"
     assert str(x) == "x"
     assert str(y) == "y"
+    assert str(f) == "f"
     assert str(sin) == "sin"
     assert str(sin(cos(x))) == "sin(cos(x))"
     assert str(x + y) == "(x + y)"
@@ -112,6 +116,21 @@ def test_simplecas_repr() -> None:
     assert str(x * y) == "(x*y)"
     assert str(x**two) == "x**2"
     assert str(x + x + x) == "((x + x) + x)"
+
+
+@pytest.mark.xfail
+def test_simplecas_repr_xfail() -> None:
+    """Test printing an undefined function."""
+    #
+    # This fails because Evaluator expects every function to be defined. There
+    # is a printing rule for Function but that only handles an uncalled
+    # function like f rather than f(x). There needs to be a way to give a
+    # default rule to an Evaluator for handling the cases where there is no
+    # operation rule defined for the head.
+    #
+    assert str(f(x)) == "f(x)"
+    assert repr(f(x)) == "f(x)"
+    assert f(x).eval_latex() == "f(x)"
 
 
 def test_simplecas_latex() -> None:
@@ -135,7 +154,7 @@ def test_simplecas_repr_latex() -> None:
 def test_simplecas_to_sympy() -> None:
     """Test converting a simplecas expression to a SymPy expression."""
     try:
-        sympy = __import__("sympy")
+        import sympy
     except ImportError:
         skip("SymPy not installed")
 
@@ -230,3 +249,17 @@ def test_simplecas_differentation() -> None:
     assert (sin(x) + cos(x)).diff(x) == cos(x) + -1 * sin(x)
     assert (sin(x) ** 2).diff(x) == 2 * sin(x) ** Add(2, -1) * cos(x)
     assert (x * sin(x)).diff(x) == 1 * sin(x) + x * cos(x)
+
+
+def test_simplecas_bin_expand() -> None:
+    """Test Expr.bin_expand()."""
+    expr1 = Add(1, 2, 3, 4)
+    assert expr1.bin_expand() == Add(Add(Add(1, 2), 3), 4)
+    assert str(expr1) == "(1 + 2 + 3 + 4)"
+    assert str(expr1.bin_expand()) == "(((1 + 2) + 3) + 4)"
+
+    expr2 = Add(x, y, Mul(x, y, 1, f(x)))
+    assert expr2.bin_expand() == Add(Add(x, y), Mul(Mul(Mul(x, y), 1), f(x)))
+    # Fails because f(x) cannot be printed:
+    # assert str(expr2) == "(x + y + x*y*1*f(x))"
+    # assert str(expr2.bin_expand()) == "((x + y) + ((x*y)*1)*f(x))"

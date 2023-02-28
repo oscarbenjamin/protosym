@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from functools import reduce
 from functools import wraps
 from typing import Any
 from typing import Callable
@@ -16,6 +17,7 @@ from weakref import WeakValueDictionary as _WeakDict
 
 from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator
+from protosym.core.evaluate import Transformer
 from protosym.core.tree import forward_graph
 from protosym.core.tree import topological_sort
 from protosym.core.tree import TreeAtom
@@ -242,6 +244,18 @@ class Expr:
             deriv_rep = _diff_forward(deriv_rep, sym_rep)
         return Expr(deriv_rep)
 
+    def bin_expand(self) -> Expr:
+        """Expand associative operators to binary operations.
+
+        >>> from protosym.simplecas import Add
+        >>> expr = Add(1, 2, 3, 4)
+        >>> expr
+        (1 + 2 + 3 + 4)
+        >>> expr.bin_expand()
+        (((1 + 2) + 3) + 4)
+        """
+        return Expr(_bin_expand(self.rep))
+
 
 # Avoid importing SymPy if possible.
 _eval_to_sympy: Evaluator[Any] | None = None
@@ -344,6 +358,10 @@ eval_latex.add_op1(cos.rep, lambda a: rf"\cos({a})")
 eval_latex.add_op2(Pow.rep, lambda b, e: f"{b}^{{{e}}}")
 eval_latex.add_opn(Add.rep, lambda args: f'({" + ".join(args)})')
 eval_latex.add_opn(Mul.rep, lambda args: "(%s)" % r" \times ".join(args))
+
+_bin_expand = Transformer()
+_bin_expand.add_opn(Add.rep, lambda args: reduce(Add.rep, args))
+_bin_expand.add_opn(Mul.rep, lambda args: reduce(Mul.rep, args))
 
 
 def _op1(a: int | str) -> int:
