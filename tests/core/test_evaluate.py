@@ -1,8 +1,11 @@
 import math
 from typing import Callable
 
+from pytest import raises
+
 from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator
+from protosym.core.exceptions import NoEvaluationRuleError
 from protosym.core.tree import TreeAtom
 from protosym.core.tree import TreeExpr
 
@@ -49,3 +52,21 @@ def test_Evaluator() -> None:
     for expr, vals, expected in test_cases:
         for func in eval_funcs:
             assert func(expr, vals) == expected
+
+
+def test_Transformer() -> None:
+    """Test defining and using a Transformer."""
+    from protosym.core.tree import funcs_symbols
+    from protosym.core.evaluate import Evaluator, Transformer
+
+    [f, g], [x, y] = funcs_symbols(["f", "g"], ["x", "y"])
+
+    f2g = Transformer()
+    f2g.add_opn(f, lambda args: g(*args))
+    expr = f(g(x, f(y)), y)
+    assert f2g(expr) == g(g(x, g(y)), y)
+
+    # With Evaluator the above would fail without rules for Symbol and g:
+    f2g_eval = Evaluator[TreeExpr]()
+    f2g_eval.add_opn(f, lambda args: g(*args))
+    raises(NoEvaluationRuleError, lambda: f2g_eval(expr))

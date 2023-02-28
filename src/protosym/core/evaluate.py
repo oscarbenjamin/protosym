@@ -7,12 +7,13 @@ from typing import Generic
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import TypeVar
 
+from protosym.core.exceptions import NoEvaluationRuleError
 from protosym.core.tree import forward_graph
 from protosym.core.tree import TreeAtom
+from protosym.core.tree import TreeExpr
 
 
 if _TYPE_CHECKING:
-    from protosym.core.tree import TreeExpr
     from protosym.core.atom import AnyValue as _AnyValue
     from protosym.core.atom import AtomType
 
@@ -61,7 +62,17 @@ class Evaluator(Generic[_T]):
         """Add an evaluation rule for a particular head."""
         self.operations[head] = (func, False)
 
-    def call(self, head: TreeExpr, argvals: Iterable[_T]) -> _T:
+    def eval_atom(self, atom: TreeAtom[_S]) -> _T:
+        """Evaluate an atom."""
+        atom_value = atom.value
+        atom_func = self.atoms.get(atom_value.atom_type)  # type: ignore
+        if atom_func is not None:
+            return atom_func(atom_value.value)
+        else:
+            msg = "No rule for AtomType: " + atom_value.atom_type.name
+            raise NoEvaluationRuleError(msg)
+
+    def eval_operation(self, head: TreeExpr, argvals: Iterable[_T]) -> _T:
         """Evaluate one function with some values."""
         op_func, star_args = self.operations[head]
         if star_args:
@@ -81,15 +92,13 @@ class Evaluator(Generic[_T]):
             return values[expr]
         elif isinstance(expr, TreeAtom):
             # Convert an Atom to _T
-            value = expr.value
-            atom_func = self.atoms[value.atom_type]
-            return atom_func(value.value)
+            return self.eval_atom(expr)
         else:
             # Recursively evaluate children and then apply this operation.
             head = expr.children[0]
             children = expr.children[1:]
             argvals = [self.eval_recursive(c, values) for c in children]
-            return self.call(head, argvals)
+            return self.eval_operation(head, argvals)
 
     def eval_forward(self, expr: TreeExpr, values: dict[TreeExpr, _T]) -> _T:
         """Evaluate the expression using forward evaluation."""
@@ -103,15 +112,13 @@ class Evaluator(Generic[_T]):
             if value_get is not None:
                 value = value_get
             else:
-                atom_value = atom.value  # type:ignore
-                atom_func = self.atoms[atom_value.atom_type]
-                value = atom_func(atom_value.value)
+                value = self.eval_atom(atom)  # type: ignore
             stack.append(value)
 
         # Run forward evaluation through the operations
         for head, indices in graph.operations:
             argvals = [stack[i] for i in indices]
-            stack.append(self.call(head, argvals))
+            stack.append(self.eval_operation(head, argvals))
 
         # Now stack is the values of the topological sort of expr and stack[-1]
         # is the value of expr.
@@ -124,3 +131,57 @@ class Evaluator(Generic[_T]):
         if values is None:
             values = {}
         return self.evaluate(expr, values)
+
+
+class Transformer(Evaluator[TreeExpr]):
+    """Specialized Evaluator for TreeExpr -> TreeExpr operations.
+
+    Whereas :class:`Evaluator` is used to evaluate an expression into a
+    different type of object like ``float`` or ``str`` a :class:`Transformer`
+    is used to transform a :class:`TreeExpr` into a new :class:`TreeExpr`.
+
+    The difference between using ``Transformer`` and using
+    ``Evaluator[TreeExpr]`` is that ``Transformer`` allows processing
+    operations that have no associated rules leaving the expression unmodified.
+
+    Examples
+    ========
+
+    We first import the pieces and define some functions and symbols.
+
+    >>> from protosym.core.tree import funcs_symbols
+    >>> from protosym.core.evaluate import Evaluator, Transformer
+    >>> [f, g], [x, y] = funcs_symbols(['f', 'g'], ['x', 'y'])
+
+    Now make a :class:`Transformer` to replace ``f(...)`` with ``g(...)``.
+
+    >>> f2g = Transformer()
+    >>> f2g.add_opn(f, lambda args: g(*args))
+    >>> expr = f(g(x, f(y)), y)
+    >>> print(expr)
+    f(g(x, f(y)), y)
+    >>> print(f2g(expr))
+    g(g(x, g(y)), y)
+
+    By contrast with ``Evaluator[TreeExpr]`` the above would fail because no
+    rule has been defined for the head ``g`` or for ``Symbol`` (the
+    :class:`AtomType` of ``x`` and ``y``).
+
+    >>> f2g_eval = Evaluator[TreeExpr]()
+    >>> f2g_eval.add_opn(f, lambda args: g(*args))
+    >>> f2g_eval(expr)
+    Traceback (most recent call last):
+        ...
+    protosym.core.exceptions.NoEvaluationRuleError: No rule for AtomType: Symbol
+    """
+
+    def eval_atom(self, atom: TreeAtom[_S]) -> TreeExpr:
+        """Return the atom as is."""
+        return atom
+
+    def eval_operation(self, head: TreeExpr, argvals: Iterable[TreeExpr]) -> TreeExpr:
+        """Return unevaluated operation if no rule supplied."""
+        if head not in self.operations:
+            return head(*argvals)
+        else:
+            return super().eval_operation(head, argvals)
