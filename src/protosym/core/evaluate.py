@@ -65,7 +65,7 @@ class Evaluator(Generic[_T]):
     >>> x = TreeAtom(Symbol('x'))
     >>> one = TreeAtom(Integer(1))
 
-    Now we can make an :class:`Evaluator` to evalaute this kind of expression:
+    Now we can make an :class:`Evaluator` to evaluate this kind of expression:
 
     >>> evalf = Evaluator[float]()
     >>> evalf.add_atom(Integer, float)

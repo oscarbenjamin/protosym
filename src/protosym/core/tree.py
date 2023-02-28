@@ -236,7 +236,16 @@ class TreeNode(TreeExpr):
 def funcs_symbols(
     function_names: list[str], symbol_names: list[str]
 ) -> tuple[list[TreeAtom[str]], list[TreeAtom[str]]]:
-    """Convenience function to make some functions and symbols."""
+    """Convenience function to make some functions and symbols.
+
+    >>> from protosym.core.tree import funcs_symbols
+    >>> [f, g], [x, y] = funcs_symbols(['f', 'g'], ['x', 'y'])
+    >>> expr = f(g(x, y))
+    >>> print(expr)
+    f(g(x, y))
+
+    This is mainly just here to reduce boilerplate in other docstrings.
+    """
     Function = AtomType("Function", str)  # noqa
     Symbol = AtomType("Symbol", str)  # noqa
     functions = [TreeAtom(Function(name)) for name in function_names]
