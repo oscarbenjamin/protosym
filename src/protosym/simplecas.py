@@ -69,7 +69,7 @@ def expressify(obj: Any) -> Expr:
     >>> one.rep
     TreeAtom(Integer(1))
 
-    It is harmless ro call :func:`expressify` more than once because it will
+    It is harmless to call :func:`expressify` more than once because it will
     just return the same object.
 
     >>> expressify(one) is one
