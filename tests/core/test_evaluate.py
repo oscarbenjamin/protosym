@@ -5,7 +5,9 @@ from pytest import raises
 
 from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator
+from protosym.core.evaluate import Transformer
 from protosym.core.exceptions import NoEvaluationRuleError
+from protosym.core.tree import funcs_symbols
 from protosym.core.tree import TreeAtom
 from protosym.core.tree import TreeExpr
 
@@ -56,9 +58,6 @@ def test_Evaluator() -> None:
 
 def test_Transformer() -> None:
     """Test defining and using a Transformer."""
-    from protosym.core.tree import funcs_symbols
-    from protosym.core.evaluate import Evaluator, Transformer
-
     [f, g], [x, y] = funcs_symbols(["f", "g"], ["x", "y"])
 
     f2g = Transformer()
