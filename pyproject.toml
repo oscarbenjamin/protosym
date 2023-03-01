@@ -49,6 +49,7 @@ pytest-coverage = "^0.0"
 sympy = "^1.11.1"
 pip-upgrader = "^1.4.15"
 flake8-type-checking = "^2.3.0"
+llvmlite = "^0.39.1"
 
 
 [tool.poetry.group.utils.dependencies]
@@ -83,6 +84,8 @@ show_error_context = true
 [[tool.mypy.overrides]]
 module = [
     'jinja2',
+    'llvmlite',
+    'llvmlite.binding',
     'py',
 ]
 ignore_missing_imports = true
