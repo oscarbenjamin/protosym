@@ -79,7 +79,7 @@ def expressify(obj: Any) -> Expr:
     =====
 
     Currently :func:`expressify` only supports converting ``int`` to
-    :class:`Expr` or otherwise returns any :class:`Expr` as is. It will be
+    :class:`Expr`. Otherwise any :class:`Expr` is returned as is. It will be
     extended as further possible types are added to :mod:`protosym.simplecas`.
     """
     #
