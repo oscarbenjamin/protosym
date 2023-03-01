@@ -9,6 +9,7 @@ from protosym.simplecas import expressify
 from protosym.simplecas import ExpressifyError
 from protosym.simplecas import f
 from protosym.simplecas import Integer
+from protosym.simplecas import lambdify
 from protosym.simplecas import LLVMNotImplementedError
 from protosym.simplecas import Mul
 from protosym.simplecas import negone
@@ -275,3 +276,11 @@ ret double %".4"
 
     raises(LLVMNotImplementedError, lambda: f(x).to_llvm_ir([x]))
     raises(LLVMNotImplementedError, lambda: f(x).to_llvm_ir([]))
+
+
+def test_simplecas_lambdify_llvm() -> None:
+    """Test simplecas lambdify function for a simple expression."""
+    expr1 = sin(cos(x)) * x**2 + 1
+    val1 = expr1.eval_f64({x: 1.0})
+    f = lambdify([x], expr1)
+    assert f(1) == f(1.0) == val1

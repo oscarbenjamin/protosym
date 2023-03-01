@@ -817,3 +817,60 @@ def _to_llvm_f64(symargs: list[TreeExpr], expression: TreeExpr) -> str:
     function_lines = [signature, "{", *instructions, "}"]
     module_code = _llvm_header + "\n".join(function_lines)
     return module_code
+
+
+def lambdify(args: list[Expr], expression: Expr) -> Callable[..., float]:
+    """Turn ``expression`` into an efficient callable function of ``args``.
+
+    >>> from protosym.simplecas import Symbol, sin, lambdify
+    >>> x = Symbol('x')
+    >>> f = lambdify([x], sin(x))
+    >>> f(1)
+    0.8414709848078965
+    >>> import math; math.sin(1)
+    0.8414709848078965
+    """
+    args_rep = [arg.rep for arg in args]
+    return _lambdify_llvm(args_rep, expression.rep)
+
+
+_exe_eng = []
+
+
+def _lambdify_llvm(args: list[TreeExpr], expression: TreeExpr) -> Callable[..., float]:
+    """Lambdify using llvmlite."""
+    module_code = _to_llvm_f64(args, expression)
+
+    import ctypes
+
+    try:
+        import llvmlite.binding as llvm
+    except ImportError:  # pragma: no cover
+        msg = "llvmlite needs to be installed to use lambdify_llvm."
+        raise ImportError(msg) from None
+
+    llvm.initialize()
+    llvm.initialize_native_target()
+    llvm.initialize_native_asmprinter()
+
+    llmod = llvm.parse_assembly(module_code)
+
+    pmb = llvm.create_pass_manager_builder()
+    pmb.opt_level = 2
+    pass_manager = llvm.create_module_pass_manager()
+    pmb.populate(pass_manager)
+
+    pass_manager.run(llmod)
+
+    target_machine = llvm.Target.from_default_triple().create_target_machine()
+    exe_eng = llvm.create_mcjit_compiler(llmod, target_machine)
+    exe_eng.finalize_object()
+    _exe_eng.append(exe_eng)
+
+    fptr = exe_eng.get_function_address("jit_func1")
+
+    rettype = ctypes.c_double
+    argtypes = [ctypes.c_double] * len(args)
+
+    cfunc = ctypes.CFUNCTYPE(rettype, *argtypes)(fptr)
+    return cfunc

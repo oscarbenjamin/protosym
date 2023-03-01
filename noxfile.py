@@ -141,7 +141,7 @@ def mypy(session: Session) -> None:
 @session(python=python_versions)
 def tests(session: Session) -> None:
     """Run the test suite."""
-    session.install(".", "sympy")
+    session.install(".", "sympy", "llvmlite")
     session.install("coverage[toml]", "pytest", "pygments")
     try:
         session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)
@@ -179,7 +179,7 @@ def coverage(session: Session) -> None:
 def xdoctest(session: Session) -> None:
     """Run examples with xdoctest."""
     args = session.posargs or ["all"]
-    session.install(".", "sympy")
+    session.install(".", "sympy", "llvmlite")
     session.install("xdoctest[colors]")
     session.run("python", "-m", "xdoctest", "--quiet", package, *args)
 
