@@ -160,7 +160,7 @@ class Expr:
     >>> (x + (x + x))
     (x + (x + x))
 
-    An :class:`Expr` display directly its internal form which can be surprising e.g.:
+    An :class:`Expr` directly displays its internal form which can be surprising e.g.:
 
     >>> x - y
     (x + (-1*y))
