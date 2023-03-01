@@ -54,7 +54,34 @@ class ExpressifyError(TypeError):
 
 
 def expressify(obj: Any) -> Expr:
-    """Convert a native object to an ``Expr``."""
+    """Convert a native Python object to an ``Expr``.
+
+    >>> from protosym.simplecas import expressify
+    >>> one = expressify(1)
+    >>> one
+    1
+    >>> type(one)
+    <class 'protosym.simplecas.Expr'>
+
+    This is the internal representation of the ``one`` object returned by
+    :func:`expressify`:
+
+    >>> one.rep
+    TreeAtom(Integer(1))
+
+    It is harmless to call :func:`expressify` more than once because it will
+    just return the same object.
+
+    >>> expressify(one) is one
+    True
+
+    Notes
+    =====
+
+    Currently :func:`expressify` only supports converting ``int`` to
+    :class:`Expr`. Otherwise any :class:`Expr` is returned as is. It will be
+    extended as further possible types are added to :mod:`protosym.simplecas`.
+    """
     #
     # This is supposed to be analogous to sympify but needs improvement.
     #
@@ -93,7 +120,68 @@ def expressify_other(method: ExprBinOp) -> ExpressifyBinOp:
 
 
 class Expr:
-    """User-facing class for representing expressions."""
+    """User-facing class for representing expressions.
+
+    To create an :class:`Expr` first import the basic types from
+    :mod:`protosym.simplecas` and then use them to build up some expressions.
+
+    >>> from protosym.simplecas import Symbol, cos, sin
+    >>> x = Symbol('x')
+    >>> y = Symbol('y')
+    >>> expr = sin(x)
+    >>> expr
+    sin(x)
+    >>> expr.diff(x)
+    cos(x)
+
+    Unlike some other symbolic manipulation systems expressions here are inert
+    and will not change their form implicitly.
+
+    >>> x + x
+    (x + x)
+    >>> y + x
+    (y + x)
+    >>> x + y
+    (x + y)
+
+    This has some surprising consequences such as the preservation of the order
+    of binary operations.
+
+    >>> x + x + x
+    ((x + x) + x)
+
+    Here the :class:`Expr` was created by evaluating the Python code ``x + x +
+    x`` which is in fact evaluated as ``((x + x) + x)``. Since :class:`Expr`
+    preserves this form that is what the resulting expression will be.
+
+    On the other hand if brackets are included explicitly then they will be
+    preserved.
+
+    >>> (x + (x + x))
+    (x + (x + x))
+
+    An :class:`Expr` directly displays its internal form which can be surprising e.g.:
+
+    >>> x - y
+    (x + (-1*y))
+
+    This is in fact the form that many algebra systems use to represent ``x -
+    y`` although often the resulting expression would be displayed differently.
+
+    The :class:`Expr` class has many methods some of which are listed below.
+
+    See Also
+    ========
+
+    diff
+    eval_f64
+    eval_latex
+    from_sympy
+    count_ops_graph
+    count_ops_tree
+    from_sympy
+    to_sympy
+    """
 
     _all_expressions: _WeakDict[Any, Any] = _WeakDict()
 
@@ -102,6 +190,7 @@ class Expr:
     def __new__(cls, tree_expr: TreeExpr) -> Expr:
         """Create an Expr from a TreeExpr."""
         if not isinstance(tree_expr, TreeExpr):
+            # Maybe call expressify here?
             raise TypeError("First argument to Expr should be TreeExpr")
 
         key = tree_expr
@@ -203,39 +292,195 @@ class Expr:
         return eval_repr(self.rep)
 
     def eval_latex(self) -> str:
-        """Return a LaTeX representaton of the expression."""
+        r"""Return a LaTeX representaton of the expression.
+
+        >>> from protosym.simplecas import Symbol, sin
+        >>> x = Symbol('x')
+        >>> expr = sin(x**2)
+        >>> expr
+        sin(x**2)
+        >>> print(expr.eval_latex())
+        \sin(x^{2})
+        """
         return eval_latex(self.rep)
 
     def to_sympy(self) -> Any:
-        """Convert to a SymPy expression."""
+        """Convert to a SymPy expression.
+
+        >>> from protosym.simplecas import sin, Symbol
+        >>> x = Symbol('x')
+        >>> expr_protosym = sin(x)
+        >>> expr_protosym
+        sin(x)
+        >>> type(expr_protosym)
+        <class 'protosym.simplecas.Expr'>
+
+        >>> expr_sympy = expr_protosym.to_sympy()
+        >>> expr_sympy
+        sin(x)
+        >>> type(expr_sympy)
+        sin
+
+        See Also
+        ========
+
+        from_sympy
+        """
         return to_sympy(self)
 
     @classmethod
     def from_sympy(cls, expr: Any) -> Expr:
-        """Create an ``Expr`` from a SymPy expression."""
+        """Create a simplecas ``Expr`` from a SymPy expression.
+
+        >>> from sympy import sin, Symbol
+        >>> x = Symbol('x')
+        >>> expr_sympy = sin(x)
+        >>> expr_sympy
+        sin(x)
+        >>> type(expr_sympy)
+        sin
+
+        >>> from protosym.simplecas import Expr
+        >>> expr_protosym = Expr.from_sympy(expr_sympy)
+        >>> expr_protosym
+        sin(x)
+        >>> type(expr_protosym)
+        <class 'protosym.simplecas.Expr'>
+
+        See Also
+        ========
+
+        to_sympy
+        """
         return from_sympy(expr)
 
     def eval_f64(self, values: Optional[dict[Expr, float]] = None) -> float:
-        """Evaluate the expression as a float."""
+        """Evaluate the expression as a 64-bit ``float``.
+
+        >>> from protosym.simplecas import Symbol, sin
+        >>> expr1 = sin(sin(1))
+        >>> expr1
+        sin(sin(1))
+        >>> expr1.eval_f64()
+        0.7456241416655579
+
+        If the expression contains symbols to be substituted then they can be
+        provided as a dictionary of values:
+
+        >>> x = Symbol('x')
+        >>> expr2 = sin(sin(x))
+        >>> expr2
+        sin(sin(x))
+        >>> expr2.eval_f64({x: 1.0})
+        0.7456241416655579
+
+        Python floats are based on IEEE 754 64-bit binary floating point which
+        gives 53 bits of precision and a range of magnitudes approximately from
+        :math:`10^{-300}` to :math:`10^{300}`.
+        """
         values_rep = {}
         if values is not None:
             values_rep = {e.rep: v for e, v in values.items()}
         return eval_f64(self.rep, values_rep)
 
     def count_ops_tree(self) -> int:
-        """Count operations in ``Expr`` following tree representation."""
+        """Count operations in ``Expr`` following tree representation.
+
+        See :meth:`count_ops_graph` for an explanation.
+        """
         return count_ops_tree(self.rep)
 
     def count_ops_graph(self) -> int:
-        """Count operations in ``Expr`` following tree representation."""
+        """Count operations in ``Expr`` following tree representation.
+
+        The number of operations in the *graph* representation of an expression
+        is equal to the number of distinct subexpressions it has. By contrast
+        the number of operations in the *tree* representation is equal to the
+        number of subexpressions **counted with their multiplicity**. In other
+        words the tree can have many repeating subexpressions whereas the graph
+        will only contain one copy of each unique subexpression.
+
+        We will make a function that can create large expressions and then
+        count their operations:
+
+        >>> from protosym.simplecas import Symbol
+        >>> x = Symbol('x')
+        >>> def make_expression(n):
+        ...     e = x
+        ...     for _ in range(n):
+        ...         e = e**2 + e
+        ...     return e
+
+        For example this is what ``make_expression`` returns for small ``n``:
+
+        >>> make_expression(1)
+        (x**2 + x)
+        >>> make_expression(2)
+        ((x**2 + x)**2 + (x**2 + x))
+        >>> make_expression(3)
+        (((x**2 + x)**2 + (x**2 + x))**2 + ((x**2 + x)**2 + (x**2 + x)))
+
+        We can see that these expressions have many repeating subexpressions.
+        It is because of this that their *graph* representation will be a lot
+        smaller than their *tree* representation.
+
+        >>> for n in [1, 2, 5, 10, 20, 50, 100]:
+        ...     expr = make_expression(n)
+        ...     print(expr.count_ops_graph(), expr.count_ops_tree())
+        4 5
+        6 13
+        12 125
+        22 4093
+        42 4194301
+        102 4503599627370493
+        202 5070602400912917605986812821501
+
+        What we can see is the for this (very extreme) class of expressions as
+        we increase ``n`` the size of the graph representation grows *linearly*
+        as :math:`2n + 2` whereas the size of the tree representation grows
+        *exponentially* as :math:`2^{n+2} - 3`. For this class of expressions the
+        graph representation will be much more efficient than the tree
+        representation both in terms of memory and also computing time.
+
+        See Also
+        ========
+
+        count_ops_tree
+        """
         return len(topological_sort(self.rep))
 
     def diff(self, sym: Expr, ntimes: int = 1) -> Expr:
-        """Differentiate ``expr`` wrt ``sym``.
+        """Differentiate ``expr`` wrt ``sym`` (``ntimes`` times).
 
         >>> from protosym.simplecas import x, sin
         >>> sin(x).diff(x)
         cos(x)
+
+        Currently no simplification is done which can lead to some strange
+        looking output:
+
+        >>> sin(x).diff(x, 4)
+        (-1*(-1*sin(x)))
+
+        Large expressions can be generated and differentiated efficiently:
+
+        >>> expr = sin(sin(sin(sin(sin(x))))).diff(x, 10)
+        >>> expr.count_ops_graph()
+        1552
+        >>> expr.count_ops_tree()
+        893621974
+
+        Notes
+        =====
+
+        Currently the differentiation algorithm is based on *forward
+        accumulation* which is a common technique in the authomatic
+        differentiation literature.
+
+        References
+        ==========
+
+        https://en.wikipedia.org/wiki/Automatic_differentiation
         """
         deriv_rep = self.rep
         sym_rep = sym.rep

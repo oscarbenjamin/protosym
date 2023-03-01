@@ -179,7 +179,7 @@ def coverage(session: Session) -> None:
 def xdoctest(session: Session) -> None:
     """Run examples with xdoctest."""
     args = session.posargs or ["all"]
-    session.install(".")
+    session.install(".", "sympy")
     session.install("xdoctest[colors]")
     session.run("python", "-m", "xdoctest", "--quiet", package, *args)
 
@@ -201,7 +201,7 @@ def docs_build(session: Session) -> None:
 @session(python="3.9")
 def docs(session: Session) -> None:
     """Build and serve the documentation with live reloading on file changes."""
-    args = session.posargs or ["--open-browser", "docs", "docs/_build"]
+    args = session.posargs or ["--open-browser", "docs", "docs/_build", "--watch=src"]
     session.install(".")
     session.install("sphinx", "sphinx-autobuild", "sphinx-rtd-theme")
 
