@@ -462,7 +462,7 @@ class Expr:
         >>> sin(x).diff(x, 4)
         (-1*(-1*sin(x)))
 
-        Large expressions can be generated and diferentiated efficiently:
+        Large expressions can be generated and differentiated efficiently:
 
         >>> expr = sin(sin(sin(sin(sin(x))))).diff(x, 10)
         >>> expr.count_ops_graph()
