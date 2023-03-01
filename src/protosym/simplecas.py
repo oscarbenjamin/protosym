@@ -437,7 +437,7 @@ class Expr:
 
         What we can see is the for this (very extreme) class of expressions as
         we increase ``n`` the size of the graph representation grows *linearly*
-        as :math:`2n + 2` where as the size of the tree representation grows
+        as :math:`2n + 2` whereas the size of the tree representation grows
         *exponentially* as :math:`2^{n+2} - 3`. For this class of expressions the
         graph representation will be much more efficient than the tree
         representation both in terms of memory and also computing time.
