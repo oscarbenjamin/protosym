@@ -9,6 +9,7 @@ from protosym.simplecas import expressify
 from protosym.simplecas import ExpressifyError
 from protosym.simplecas import f
 from protosym.simplecas import Integer
+from protosym.simplecas import LLVMNotImplementedError
 from protosym.simplecas import Mul
 from protosym.simplecas import negone
 from protosym.simplecas import one
@@ -245,6 +246,32 @@ def test_simplecas_bin_expand() -> None:
 
     expr2 = Add(x, y, Mul(x, y, 1, f(x)))
     assert expr2.bin_expand() == Add(Add(x, y), Mul(Mul(Mul(x, y), 1), f(x)))
-    # Fails because f(x) cannot be printed:
-    # assert str(expr2) == "(x + y + x*y*1*f(x))"
-    # assert str(expr2.bin_expand()) == "((x + y) + ((x*y)*1)*f(x))"
+    assert str(expr2) == "(x + y + (x*y*1*f(x)))"
+    assert str(expr2.bin_expand()) == "((x + y) + (((x*y)*1)*f(x)))"
+
+
+def test_simplecas_to_llvm_ir() -> None:
+    """Test converting Expr to LLVM IR."""
+    expr1 = sin(cos(x)) * x**2 + 1
+    expected = """
+; ModuleID = "mod1"
+target triple = "unknown-unknown-unknown"
+target datalayout = ""
+
+declare double    @llvm.pow.f64(double %Val1, double %Val2)
+declare double    @llvm.sin.f64(double %Val)
+declare double    @llvm.cos.f64(double %Val)
+
+define double @"jit_func1"(double %"x")
+{
+%".0" = call double @llvm.cos.f64(double %"x")
+%".1" = call double @llvm.sin.f64(double %".0")
+%".2" = call double @llvm.pow.f64(double %"x", double 0x4000000000000000)
+%".3" = fmul double %".1", %".2"
+%".4" = fadd double %".3", 0x3ff0000000000000
+ret double %".4"
+}"""
+    assert expr1.to_llvm_ir([x]) == expected
+
+    raises(LLVMNotImplementedError, lambda: f(x).to_llvm_ir([x]))
+    raises(LLVMNotImplementedError, lambda: f(x).to_llvm_ir([]))
