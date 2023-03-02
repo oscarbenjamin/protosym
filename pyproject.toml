@@ -50,6 +50,7 @@ sympy = "^1.11.1"
 pip-upgrader = "^1.4.15"
 flake8-type-checking = "^2.3.0"
 pytest-benchmark = "^4.0.0"
+symengine = "^0.9.2"
 
 
 [tool.poetry.group.utils.dependencies]
@@ -90,6 +91,7 @@ show_error_context = true
 module = [
     'jinja2',
     'py',
+    'symengine',
 ]
 ignore_missing_imports = true
 
