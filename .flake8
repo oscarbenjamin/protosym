@@ -5,6 +5,7 @@ max-line-length = 80
 max-complexity = 10
 docstring-convention = google
 per-file-ignores =
+    benchmarks/*: S101
     tests/*: S101,D100,D104,N802,N806,B023,TC
     noxfile.py: TC
 rst-roles = class,const,func,meth,mod,ref
