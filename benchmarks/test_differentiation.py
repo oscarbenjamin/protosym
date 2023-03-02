@@ -28,7 +28,8 @@ class TestNestedSineFirstDerivative:
         x = simplecas.Symbol("x")
         sin = simplecas.sin
         expr = sin(sin(sin(sin(sin(sin(x))))))
-        benchmark(expr.diff, x)
+        result = benchmark(expr.diff, x)
+        assert result.eval_f64({x: 1.0}) == pytest.approx(0.13877489681259086)
 
     @staticmethod
     def test_sympy(benchmark: Fixture[sympy.Expr]) -> None:
@@ -36,7 +37,8 @@ class TestNestedSineFirstDerivative:
         x = sympy.Symbol("x")
         sin = sympy.sin
         expr = sin(sin(sin(sin(sin(sin(x))))))
-        benchmark(expr.diff, x)
+        result = benchmark(expr.diff, x)
+        assert result.evalf(subs={x: 1.0}) == pytest.approx(0.13877489681259086)
 
     @staticmethod
     def test_symengine(benchmark: Fixture[symengine.Expr]) -> None:
@@ -44,7 +46,8 @@ class TestNestedSineFirstDerivative:
         x = symengine.Symbol("x")
         sin = symengine.sin
         expr = sin(sin(sin(sin(sin(sin(x))))))
-        benchmark(expr.diff, x)
+        result = benchmark(expr.diff, x)
+        assert float(result.subs(x, 1.0).evalf()) == pytest.approx(0.13877489681259086)
 
 
 @pytest.mark.benchmark(group="differentiate nested sine tenth derivative")
@@ -57,7 +60,8 @@ class TestNestedSineTenthDerivative:
         x = simplecas.Symbol("x")
         sin = simplecas.sin
         expr = sin(sin(sin(sin(sin(sin(x))))))
-        benchmark(expr.diff, x, 10)
+        result = benchmark(expr.diff, x, 10)
+        assert result.eval_f64({x: 1.0}) == pytest.approx(11560.616267596966)
 
     @staticmethod
     @pytest.mark.skip(reason="too slow for benchmarking")
@@ -66,7 +70,8 @@ class TestNestedSineTenthDerivative:
         x = sympy.Symbol("x")
         sin = sympy.sin
         expr = sin(sin(sin(sin(sin(sin(x))))))
-        benchmark(expr.diff, x, 10)
+        result = benchmark(expr.diff, x, 10)
+        assert result.evalf(subs={x: 1.0}) == pytest.approx(11560.616267596966)
 
     @staticmethod
     def test_symengine(benchmark: Fixture[symengine.Expr]) -> None:
@@ -74,4 +79,5 @@ class TestNestedSineTenthDerivative:
         x = symengine.Symbol("x")
         sin = symengine.sin
         expr = sin(sin(sin(sin(sin(sin(x))))))
-        benchmark(expr.diff, x, 10)
+        result = benchmark(expr.diff, x, 10)
+        assert float(result.subs(x, 1.0).evalf()) == pytest.approx(11560.616267596966)
