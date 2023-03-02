@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import struct
 from functools import reduce
 from functools import wraps
 from typing import Any
@@ -17,6 +18,7 @@ from weakref import WeakValueDictionary as _WeakDict
 from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator
 from protosym.core.evaluate import Transformer
+from protosym.core.exceptions import ProtoSymError
 from protosym.core.tree import forward_graph
 from protosym.core.tree import topological_sort
 from protosym.core.tree import TreeAtom
@@ -500,6 +502,31 @@ class Expr:
         """
         return Expr(bin_expand(self.rep))
 
+    def to_llvm_ir(self, symargs: list[Expr]) -> str:
+        """Return LLVM IR code evaluating this expression.
+
+        >>> from protosym.simplecas import sin, x
+        >>> expr = sin(x) + sin(sin(x))
+        >>> print(expr.to_llvm_ir([x]))
+        ; ModuleID = "mod1"
+        target triple = "unknown-unknown-unknown"
+        target datalayout = ""
+        <BLANKLINE>
+        declare double    @llvm.pow.f64(double %Val1, double %Val2)
+        declare double    @llvm.sin.f64(double %Val)
+        declare double    @llvm.cos.f64(double %Val)
+        <BLANKLINE>
+        define double @"jit_func1"(double %"x")
+        {
+        %".0" = call double @llvm.sin.f64(double %"x")
+        %".1" = call double @llvm.sin.f64(double %".0")
+        %".2" = fadd double %".0", %".1"
+        ret double %".2"
+        }
+
+        """
+        return _to_llvm_f64([arg.rep for arg in symargs], self.rep)
+
 
 # Avoid importing SymPy if possible.
 _eval_to_sympy: Evaluator[Any] | None = None
@@ -713,3 +740,137 @@ def _diff_forward(expression: TreeExpr, sym: TreeExpr) -> TreeExpr:
     # list of derivatives of every subexpression in expr. At the top of the
     # stack is expr and its derivative is at the top of diff_stack.
     return diff_stack[-1]
+
+
+# -------------------------------------------------
+# lambdification with LLVM
+# ------------------------------------------------
+
+
+class LLVMNotImplementedError(ProtoSymError):
+    """Raised when an operation is not supported for LLVM."""
+
+    pass
+
+
+def _double_to_hex(f: float) -> str:
+    return hex(struct.unpack("<Q", struct.pack("<d", f))[0])
+
+
+_llvm_header = """
+; ModuleID = "mod1"
+target triple = "unknown-unknown-unknown"
+target datalayout = ""
+
+declare double    @llvm.pow.f64(double %Val1, double %Val2)
+declare double    @llvm.sin.f64(double %Val)
+declare double    @llvm.cos.f64(double %Val)
+
+"""
+
+
+def _to_llvm_f64(symargs: list[TreeExpr], expression: TreeExpr) -> str:
+    """Code for LLVM IR function computing ``expression`` from ``symargs``."""
+    expression = bin_expand(expression)
+
+    graph = forward_graph(expression)
+
+    argnames = {s: f'%"{s}"' for s in symargs}  # noqa
+
+    identifiers = []
+    for a in graph.atoms:
+        if a in symargs:
+            identifiers.append(argnames[a])
+        elif isinstance(a, TreeAtom) and a.value.atom_type == Integer.atom_type:
+            identifiers.append(_double_to_hex(a.value.value))
+        else:
+            raise LLVMNotImplementedError("No LLVM rule for: " + repr(a))
+
+    args = ", ".join(f"double {argnames[arg]}" for arg in symargs)
+    signature = f'define double @"jit_func1"({args})'
+
+    instructions: list[str] = []
+    for func, indices in graph.operations:
+        n = len(instructions)
+        identifier = f'%".{n}"'
+        identifiers.append(identifier)
+        argids = [identifiers[i] for i in indices]
+
+        if func == Add.rep:
+            line = f"{identifier} = fadd double " + ", ".join(argids)
+        elif func == Mul.rep:
+            line = f"{identifier} = fmul double " + ", ".join(argids)
+        elif func == Pow.rep:
+            args = f"double {argids[0]}, double {argids[1]}"
+            line = f"{identifier} = call double @llvm.pow.f64({args})"
+        elif func == sin.rep:
+            line = f"{identifier} = call double @llvm.sin.f64(double {argids[0]})"
+        elif func == cos.rep:
+            line = f"{identifier} = call double @llvm.cos.f64(double {argids[0]})"
+        else:
+            raise LLVMNotImplementedError("No LLVM rule for: " + repr(func))
+
+        instructions.append(line)
+
+    instructions.append(f"ret double {identifiers[-1]}")
+
+    function_lines = [signature, "{", *instructions, "}"]
+    module_code = _llvm_header + "\n".join(function_lines)
+    return module_code
+
+
+def lambdify(args: list[Expr], expression: Expr) -> Callable[..., float]:
+    """Turn ``expression`` into an efficient callable function of ``args``.
+
+    >>> from protosym.simplecas import Symbol, sin, lambdify
+    >>> x = Symbol('x')
+    >>> f = lambdify([x], sin(x))
+    >>> f(1)
+    0.8414709848078965
+    >>> import math; math.sin(1)
+    0.8414709848078965
+    """
+    args_rep = [arg.rep for arg in args]
+    return _lambdify_llvm(args_rep, expression.rep)
+
+
+_exe_eng = []
+
+
+def _lambdify_llvm(args: list[TreeExpr], expression: TreeExpr) -> Callable[..., float]:
+    """Lambdify using llvmlite."""
+    module_code = _to_llvm_f64(args, expression)
+
+    import ctypes
+
+    try:
+        import llvmlite.binding as llvm
+    except ImportError:  # pragma: no cover
+        msg = "llvmlite needs to be installed to use lambdify_llvm."
+        raise ImportError(msg) from None
+
+    llvm.initialize()
+    llvm.initialize_native_target()
+    llvm.initialize_native_asmprinter()
+
+    llmod = llvm.parse_assembly(module_code)
+
+    pmb = llvm.create_pass_manager_builder()
+    pmb.opt_level = 2
+    pass_manager = llvm.create_module_pass_manager()
+    pmb.populate(pass_manager)
+
+    pass_manager.run(llmod)
+
+    target_machine = llvm.Target.from_default_triple().create_target_machine()
+    exe_eng = llvm.create_mcjit_compiler(llmod, target_machine)
+    exe_eng.finalize_object()
+    _exe_eng.append(exe_eng)
+
+    fptr = exe_eng.get_function_address("jit_func1")
+
+    rettype = ctypes.c_double
+    argtypes = [ctypes.c_double] * len(args)
+
+    cfunc = ctypes.CFUNCTYPE(rettype, *argtypes)(fptr)
+    return cfunc
