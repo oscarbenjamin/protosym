@@ -330,7 +330,7 @@ def topological_sort(expression: TreeExpr, *, heads: bool = False) -> list[TreeE
 
 def topological_split(
     expr: TreeExpr,
-) -> tuple[list[TreeExpr], set[TreeExpr], list[TreeExpr]]:
+) -> tuple[list[TreeAtom[Any]], set[TreeExpr], list[TreeExpr]]:
     """Topological sort split into atoms, heads and compound expressions.
 
     First build an expression:
@@ -362,14 +362,14 @@ def topological_split(
     """
     subexpressions = topological_sort(expr)
 
-    atoms: list[TreeExpr] = []
+    atoms: list[TreeAtom[Any]] = []
     heads: set[TreeExpr] = set()
     nodes: list[TreeExpr] = []
 
     for subexpr in subexpressions:
         children = subexpr.children
         if not children:
-            atoms.append(subexpr)
+            atoms.append(subexpr)  # type: ignore
         else:
             heads.add(children[0])
             nodes.append(subexpr)
@@ -449,6 +449,6 @@ class ForwardGraph:
     TreeExpr: Representation of an expression as a tree.
     """
 
-    atoms: list[TreeExpr]
+    atoms: list[TreeAtom[Any]]
     heads: set[TreeExpr]
     operations: list[tuple[TreeExpr, list[int]]]

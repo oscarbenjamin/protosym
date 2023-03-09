@@ -9,6 +9,7 @@ from typing import Any
 from typing import Callable
 from typing import Generic
 from typing import Optional
+from typing import Sequence
 from typing import Type
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import TypeVar
@@ -671,7 +672,7 @@ derivatives: dict[tuple[TreeExpr, int], Callable[..., TreeExpr]] = {
 
 
 def _prod_rule_forward(
-    args: list[TreeExpr], diff_args: list[TreeExpr]
+    args: Sequence[TreeExpr], diff_args: list[TreeExpr]
 ) -> list[TreeExpr]:
     """Product rule in forward accumulation."""
     terms: list[TreeExpr] = []
@@ -683,7 +684,7 @@ def _prod_rule_forward(
 
 
 def _chain_rule_forward(
-    func: TreeExpr, args: list[TreeExpr], diff_args: list[TreeExpr]
+    func: TreeExpr, args: Sequence[TreeExpr], diff_args: list[TreeExpr]
 ) -> list[TreeExpr]:
     """Chain rule in forward accumulation."""
     terms: list[TreeExpr] = []
@@ -709,7 +710,7 @@ def _diff_forward(expression: TreeExpr, sym: TreeExpr) -> TreeExpr:
 
     graph = forward_graph(expression)
 
-    stack = list(graph.atoms)
+    stack: list[TreeExpr] = list(graph.atoms)
     diff_stack = [one.rep if expr == sym else zero.rep for expr in stack]
 
     for func, indices in graph.operations:

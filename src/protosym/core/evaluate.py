@@ -26,14 +26,14 @@ _S = TypeVar("_S")
 
 
 if _TYPE_CHECKING:
-    from typing import Optional, Iterable, Any
+    from typing import Optional, Sequence, Any
 
     Op1 = Callable[[_T], _T]
     Op2 = Callable[[_T, _T], _T]
-    OpN = Callable[[Iterable[_T]], _T]
+    OpN = Callable[[Sequence[_T]], _T]
 
 
-def _generic_operation_error(head: TreeExpr, argvals: Iterable[_T]) -> _T:
+def _generic_operation_error(head: TreeExpr, argvals: Sequence[_T]) -> _T:
     """Error fallback rule for handling unknown heads."""
     msg = "No rule for head: " + repr(head)
     raise NoEvaluationRuleError(msg)
@@ -91,7 +91,7 @@ class Evaluator(Generic[_T]):
 
     atoms: dict[AtomType[_AnyValue], Callable[[_AnyValue], _T]]
     operations: dict[TreeExpr, tuple[Callable[..., _T], bool]]
-    generic_operation_func: Callable[[TreeExpr, Iterable[_T]], _T]
+    generic_operation_func: Callable[[TreeExpr, Sequence[_T]], _T]
     generic_atom_func: Callable[[TreeAtom[_S]], _T]
 
     def __init__(self) -> None:
@@ -123,7 +123,7 @@ class Evaluator(Generic[_T]):
         """Add an evaluation rule for a particular head."""
         self.operations[head] = (func, False)
 
-    def add_op_generic(self, func: Callable[[TreeExpr, Iterable[_T]], _T]) -> None:
+    def add_op_generic(self, func: Callable[[TreeExpr, Sequence[_T]], _T]) -> None:
         """Add a generic fallback rule for heads."""
         self.generic_operation_func = func
 
@@ -135,7 +135,7 @@ class Evaluator(Generic[_T]):
             return self.generic_atom_func(atom)
         return atom_func(atom_value.value)
 
-    def eval_operation(self, head: TreeExpr, argvals: Iterable[_T]) -> _T:
+    def eval_operation(self, head: TreeExpr, argvals: Sequence[_T]) -> _T:
         """Evaluate one function with some values."""
         func_star = self.operations.get(head)
 
@@ -182,7 +182,7 @@ class Evaluator(Generic[_T]):
             if value_get is not None:
                 value = value_get
             else:
-                value = self.eval_atom(atom)  # type: ignore
+                value = self.eval_atom(atom)
             stack.append(value)
 
         # Run forward evaluation through the operations
