@@ -26,6 +26,7 @@ def test_Sym() -> None:
     Symbol = Expr.new_atom("Symbol", str)
     Function = Expr.new_atom("Function", str)
     cos = Function("cos")
+    sin = Function("sin")
     Add = Function("Add")
     one = Integer(1)
     x = Symbol("x")
@@ -43,11 +44,17 @@ def test_Sym() -> None:
 
     to_str = Expr.new_evaluator("to_str", str)
     to_str.add_atom(Integer, str)
+    to_str.add_atom_generic(str)
     to_str.add_op1(cos, lambda s: f"cos({s})")
     to_str.add_opn(Add, " + ".join)
+    to_str.add_op_generic(lambda f, a: f"{f}({', '.join(a)})")
 
     assert to_str(cos(one)) == "cos(1)"
     assert to_str(Add(one, one, one)) == "1 + 1 + 1"
+
+    # Test the generic rules
+    assert to_str(sin) == "sin"
+    assert to_str(sin(one)) == "sin(1)"
 
     assert type(to_str) == SymEvaluator
     assert repr(to_str) == repr(to_str) == "to_str"

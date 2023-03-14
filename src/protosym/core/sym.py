@@ -248,6 +248,10 @@ class SymEvaluator(Generic[T_sym, T_val]):
         """Add a rule for an atom type."""
         self.evaluator.add_atom(atom_type.atom_type, func)
 
+    def add_atom_generic(self, func: Callable[[Any], T_val]) -> None:
+        """Add a generic fallback rule for atoms."""
+        self.evaluator.add_atom_generic(func)
+
     def add_op1(self, head: T_sym, func: Callable[[T_val], T_val]) -> None:
         """Add a rule for an unary head."""
         self.evaluator.add_op1(head.rep, func)
@@ -259,6 +263,12 @@ class SymEvaluator(Generic[T_sym, T_val]):
     def add_opn(self, head: T_sym, func: Callable[[Sequence[T_val]], T_val]) -> None:
         """Add a rule for an nary head."""
         self.evaluator.add_opn(head.rep, func)
+
+    def add_op_generic(
+        self, func: Callable[[TreeExpr, Sequence[T_val]], T_val]
+    ) -> None:
+        """Add a generic fallback rule for heads."""
+        self.evaluator.add_op_generic(func)
 
     def __call__(
         self, expr: T_sym, values: Optional[dict[T_sym, T_val]] = None
