@@ -6,6 +6,7 @@ from typing import Any
 from pytest import approx
 from pytest import raises
 
+from protosym.core.exceptions import BadRuleError
 from protosym.core.sym import AtomFunc
 from protosym.core.sym import AtomRule
 from protosym.core.sym import HeadOp
@@ -14,6 +15,7 @@ from protosym.core.sym import PyFunc1
 from protosym.core.sym import PyOp1
 from protosym.core.sym import PyOp2
 from protosym.core.sym import PyOpN
+from protosym.core.sym import star
 from protosym.core.sym import Sym
 from protosym.core.sym import SymAtomType
 from protosym.core.sym import SymEvaluator
@@ -59,7 +61,7 @@ def test_Sym() -> None:
     to_str[Integer[a]] = PyFunc1[int, str](str)(a)
     to_str[AtomRule[a]] = AtomFunc(str)(a)
     to_str[cos(a)] = PyOp1(lambda s: f"cos({s})")(a)
-    to_str[Add(a)] = PyOpN(" + ".join)(a)
+    to_str[Add(star(a))] = PyOpN(" + ".join)(a)
     to_str[HeadRule(a, b)] = HeadOp(lambda f, a: f"{f}({', '.join(a)})")(a, b)
 
     assert to_str(cos(one)) == "cos(1)"
@@ -95,15 +97,16 @@ def test_Sym() -> None:
         (cos(a), PyOp2(math.atan2)(a, b)),
         (AtomRule[a], PyOp2(math.atan2)(a, b)),
         (HeadRule(a, b), PyOp1(math.cos)(a)),
+        (Add(a), PyOpN[float](sum)(a)),
     ]
 
     def set_bad_rule(k: Any, v: Any) -> None:
         eval_f64[k] = v
 
     for key, value in bad_examples:
-        raises(TypeError, lambda: set_bad_rule(key, value))
+        raises(BadRuleError, lambda: set_bad_rule(key, value))
 
     def set_bad_op() -> None:
         eval_f64.add_op(cos, lambda x: x)  # type:ignore
 
-    raises(TypeError, set_bad_op)
+    raises(BadRuleError, set_bad_op)

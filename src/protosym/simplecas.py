@@ -21,6 +21,7 @@ from protosym.core.sym import PyFunc1
 from protosym.core.sym import PyOp1
 from protosym.core.sym import PyOp2
 from protosym.core.sym import PyOpN
+from protosym.core.sym import star
 from protosym.core.sym import Sym
 from protosym.core.tree import forward_graph
 from protosym.core.tree import topological_sort
@@ -500,8 +501,8 @@ def _get_eval_to_sympy() -> SymEvaluator[Expr, Any]:
     eval_to_sympy[Integer[a]] = PyFunc1(sympy.Integer)(a)
     eval_to_sympy[Symbol[a]] = PyFunc1(sympy.Symbol)(a)
     eval_to_sympy[Function[a]] = PyFunc1(sympy.Function)(a)
-    eval_to_sympy[Add(a)] = PyOpN[Any](lambda a: sympy.Add(*a))(a)
-    eval_to_sympy[Mul(a)] = PyOpN[Any](lambda a: sympy.Mul(*a))(a)
+    eval_to_sympy[Add(star(a))] = PyOpN[Any](lambda a: sympy.Add(*a))(a)
+    eval_to_sympy[Mul(star(a))] = PyOpN[Any](lambda a: sympy.Mul(*a))(a)
     eval_to_sympy[a**b] = PyOp2(sympy.Pow)(a, b)
     eval_to_sympy[sin(a)] = PyOp1(sympy.sin)(a)
     eval_to_sympy[cos(a)] = PyOp1(sympy.cos)(a)
@@ -579,8 +580,8 @@ f64_cos = PyOp1[float](math.cos)
 
 eval_f64 = Expr.new_evaluator("eval_f64", float)
 eval_f64[Integer[a]] = f64_from_int(a)
-eval_f64[Add(a)] = f64_add(a)
-eval_f64[Mul(a)] = f64_mul(a)
+eval_f64[Add(star(a))] = f64_add(a)
+eval_f64[Mul(star(a))] = f64_mul(a)
 eval_f64[a**b] = f64_pow(a, b)
 eval_f64[sin(a)] = f64_sin(a)
 eval_f64[cos(a)] = f64_cos(a)
@@ -606,8 +607,8 @@ eval_repr[AtomRule[a]] = repr_atom(a)
 eval_repr[Integer[a]] = str_from_int(a)
 eval_repr[Symbol[a]] = str_from_str(a)
 eval_repr[Function[a]] = str_from_str(a)
-eval_repr[Add(a)] = repr_add(a)
-eval_repr[Mul(a)] = repr_mul(a)
+eval_repr[Add(star(a))] = repr_add(a)
+eval_repr[Mul(star(a))] = repr_mul(a)
 eval_repr[a**b] = repr_pow(a, b)
 
 # ------------------------------------------------------------------------- #
@@ -627,8 +628,8 @@ eval_latex[HeadRule(a, b)] = repr_call(a, b)
 eval_latex[Integer[a]] = str_from_int(a)
 eval_latex[Symbol[a]] = str_from_str(a)
 eval_latex[Function[a]] = str_from_str(a)
-eval_latex[Add(a)] = latex_add(a)
-eval_latex[Mul(a)] = latex_mul(a)
+eval_latex[Add(star(a))] = latex_add(a)
+eval_latex[Mul(star(a))] = latex_mul(a)
 eval_latex[a**b] = latex_pow(a, b)
 eval_latex[sin(a)] = latex_sin(a)
 eval_latex[cos(a)] = latex_cos(a)

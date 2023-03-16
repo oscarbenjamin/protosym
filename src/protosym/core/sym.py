@@ -3,7 +3,9 @@
 This module defines the :class:`Sym` class which should be used as the
 superclass for all user-facing symbolic classes. The :class:`Sym` class only
 has a handful of attributes and methods that are used to make it compatible
-with the rest of the machinery defined in `protosym.core`.
+with the rest of the machinery defined in `protosym.core`. The idea here is to
+build a nicer syntax over the lower-level classes that can be inherited for use
+by user-facing classes that derive from :class:`Sym`.
 """
 from __future__ import annotations
 
@@ -19,6 +21,7 @@ from weakref import WeakValueDictionary as _WeakDict
 
 from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator
+from protosym.core.exceptions import BadRuleError
 from protosym.core.tree import TreeAtom
 from protosym.core.tree import TreeExpr
 
@@ -441,6 +444,14 @@ AtomRule = _AtomRuleType()
 HeadRule = _HeadRuleType()
 
 
+Star = TreeAtom(AtomType("Star", str)("Star"))
+
+
+def star(wild: T_sym) -> T_sym:
+    """Represent star-args e.g. ``f(*a)``."""
+    return type(wild)(Star(wild.rep))
+
+
 class SymEvaluator(Generic[T_sym, T_val]):
     """Evaluator for a given :class:`Sym` subclass.
 
@@ -531,7 +542,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
     ) -> None:
         ...
 
-    def __setitem__(
+    def __setitem__(  # noqa: C901
         self,
         pattern: T_sym
         | SymAtomValue[T_sym, S_val]
@@ -546,29 +557,33 @@ class SymEvaluator(Generic[T_sym, T_val]):
     ) -> None:
         """Add an evaluation rule."""
         if not isinstance(call, WildCall):
-            raise TypeError("Rule function should be a symbolic call.")
+            raise BadRuleError("Rule function should be a symbolic call.")
 
-        if pattern.args != call.args:
-            raise TypeError("Pattern and rule signatures do not match.")
+        if isinstance(call.op, PyOpN):
+            (callarg,) = call.args
+            if pattern.args != (star(callarg),):
+                raise BadRuleError("Nary function needs a star-rule.")
+        elif pattern.args != call.args:
+            raise BadRuleError("Pattern and rule signatures do not match.")
 
         if isinstance(pattern, AtomRuleType):
             if not isinstance(call.op, AtomFunc):
-                raise TypeError("AtomRule func should be of type AtomFunc")
+                raise BadRuleError("AtomRule func should be of type AtomFunc")
             self.evaluator.add_atom_generic(call.op.func)
 
         elif isinstance(pattern, HeadRuleType):
             if not isinstance(call.op, HeadOp):
-                raise TypeError("HeadRule func should be of type HeadOp")
+                raise BadRuleError("HeadRule func should be of type HeadOp")
             self.evaluator.add_op_generic(call.op.func)
 
         elif isinstance(pattern, SymAtomValue):
             if not isinstance(call.op, PyFunc1):
-                raise TypeError("Rule for an Atom should be pf type PyFunc1")
+                raise BadRuleError("Rule for an Atom should be pf type PyFunc1")
             self.evaluator.add_atom(pattern.atom_type.atom_type, call.op.func)
 
         else:
             if not isinstance(call.op, PyOp):
-                raise TypeError("Rule for a head should by of type PyOp")
+                raise BadRuleError("Rule for a head should by of type PyOp")
             self.add_op(pattern.head, call.op)
 
     def add_op(
@@ -584,7 +599,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
         elif isinstance(op, PyOpN):
             self.evaluator.add_opn(head.rep, op.func)
         else:
-            raise TypeError("Not a PyFunc")
+            raise BadRuleError("Not a PyFunc")
 
     def __repr__(self) -> str:
         """Print as the name of the Evaluator."""
