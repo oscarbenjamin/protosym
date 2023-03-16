@@ -562,7 +562,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
         if isinstance(call.op, PyOpN):
             (callarg,) = call.args
             if pattern.args != (star(callarg),):
-                raise BadRuleError("Nary function needs a star-rule.")
+                raise BadRuleError("varargs function needs a star-rule.")
         elif pattern.args != call.args:
             raise BadRuleError("Pattern and rule signatures do not match.")
 
