@@ -13,6 +13,14 @@ from typing import Union
 
 from protosym.core.evaluate import Transformer
 from protosym.core.exceptions import ProtoSymError
+from protosym.core.sym import AtomFunc
+from protosym.core.sym import AtomRule
+from protosym.core.sym import HeadOp
+from protosym.core.sym import HeadRule
+from protosym.core.sym import PyFunc1
+from protosym.core.sym import PyOp1
+from protosym.core.sym import PyOp2
+from protosym.core.sym import PyOpN
 from protosym.core.sym import Sym
 from protosym.core.tree import forward_graph
 from protosym.core.tree import topological_sort
@@ -489,14 +497,14 @@ def _get_eval_to_sympy() -> SymEvaluator[Expr, Any]:
     import sympy
 
     eval_to_sympy = Expr.new_evaluator("to_sympy", object)
-    eval_to_sympy.add_atom(Integer, sympy.Integer)
-    eval_to_sympy.add_atom(Symbol, sympy.Symbol)
-    eval_to_sympy.add_atom(Function, sympy.Function)
-    eval_to_sympy.add_op1(sin, sympy.sin)
-    eval_to_sympy.add_op1(cos, sympy.cos)
-    eval_to_sympy.add_op2(Pow, sympy.Pow)
-    eval_to_sympy.add_opn(Add, lambda a: sympy.Add(*a))
-    eval_to_sympy.add_opn(Mul, lambda a: sympy.Mul(*a))
+    eval_to_sympy[Integer[a]] = PyFunc1(sympy.Integer)(a)
+    eval_to_sympy[Symbol[a]] = PyFunc1(sympy.Symbol)(a)
+    eval_to_sympy[Function[a]] = PyFunc1(sympy.Function)(a)
+    eval_to_sympy[Add(a)] = PyOpN[Any](lambda a: sympy.Add(*a))(a)
+    eval_to_sympy[Mul(a)] = PyOpN[Any](lambda a: sympy.Mul(*a))(a)
+    eval_to_sympy[a**b] = PyOp2(sympy.Pow)(a, b)
+    eval_to_sympy[sin(a)] = PyOp1(sympy.sin)(a)
+    eval_to_sympy[cos(a)] = PyOp1(sympy.cos)(a)
 
     # Store in the global to avoid recreating the Evaluator
     _eval_to_sympy = eval_to_sympy
@@ -553,35 +561,83 @@ cos = Function("cos")
 Add = Function("Add")
 Mul = Function("Mul")
 
+a = Expr.new_wild("a")
+b = Expr.new_wild("b")
+
+# ------------------------------------------------------------------------- #
+#                                                                           #
+#     eval_f64: 64 bit floating point evaluation.                           #
+#                                                                           #
+# ------------------------------------------------------------------------- #
+
+f64_from_int = PyFunc1[int, float](float)
+f64_add = PyOpN[float](math.fsum)
+f64_mul = PyOpN[float](math.prod)
+f64_pow = PyOp2[float](math.pow)
+f64_sin = PyOp1[float](math.sin)
+f64_cos = PyOp1[float](math.cos)
+
 eval_f64 = Expr.new_evaluator("eval_f64", float)
-eval_f64.add_atom(Integer, float)
-eval_f64.add_op1(sin, math.sin)
-eval_f64.add_op1(cos, math.cos)
-eval_f64.add_op2(Pow, pow)
-eval_f64.add_opn(Add, math.fsum)
-eval_f64.add_opn(Mul, math.prod)
+eval_f64[Integer[a]] = f64_from_int(a)
+eval_f64[Add(a)] = f64_add(a)
+eval_f64[Mul(a)] = f64_mul(a)
+eval_f64[a**b] = f64_pow(a, b)
+eval_f64[sin(a)] = f64_sin(a)
+eval_f64[cos(a)] = f64_cos(a)
+
+# ------------------------------------------------------------------------- #
+#                                                                           #
+#     eval_repr: Pretty string representation                               #
+#                                                                           #
+# ------------------------------------------------------------------------- #
+
+repr_atom = AtomFunc[str](str)
+repr_call = HeadOp[str](lambda head, args: f'{head}({", ".join(args)})')
+str_from_int = PyFunc1[int, str](str)
+str_from_str = PyFunc1[str, str](str)
+repr_add = PyOpN[str](lambda args: f'({" + ".join(args)})')
+repr_mul = PyOpN[str](lambda args: f'({"*".join(args)})')
+repr_pow = PyOp2[str](lambda b, e: f"{b}**{e}")
+
 
 eval_repr = Expr.new_evaluator("eval_repr", str)
-eval_repr.add_atom(Integer, str)
-eval_repr.add_atom(Symbol, str)
-eval_repr.add_atom(Function, str)
-eval_repr.add_op_generic(lambda head, args: f'{head}({", ".join(args)})')
-eval_repr.add_op1(sin, lambda a: f"sin({a})")
-eval_repr.add_op1(cos, lambda a: f"cos({a})")
-eval_repr.add_op2(Pow, lambda b, e: f"{b}**{e}")
-eval_repr.add_opn(Add, lambda args: f'({" + ".join(args)})')
-eval_repr.add_opn(Mul, lambda args: f'({"*".join(args)})')
+eval_repr[HeadRule(a, b)] = repr_call(a, b)
+eval_repr[AtomRule[a]] = repr_atom(a)
+eval_repr[Integer[a]] = str_from_int(a)
+eval_repr[Symbol[a]] = str_from_str(a)
+eval_repr[Function[a]] = str_from_str(a)
+eval_repr[Add(a)] = repr_add(a)
+eval_repr[Mul(a)] = repr_mul(a)
+eval_repr[a**b] = repr_pow(a, b)
+
+# ------------------------------------------------------------------------- #
+#                                                                           #
+#     latex: LaTeX string representation                                    #
+#                                                                           #
+# ------------------------------------------------------------------------- #
+
+latex_add = PyOpN(lambda args: f'({" + ".join(args)})')
+latex_mul = PyOpN(lambda args: "(%s)" % r" \times ".join(args))
+latex_pow = PyOp2(lambda b, e: f"{b}^{{{e}}}")
+latex_sin = PyOp1(lambda a: rf"\sin({a})")
+latex_cos = PyOp1(lambda a: rf"\cos({a})")
 
 eval_latex = Expr.new_evaluator("eval_latex", str)
-eval_latex.add_atom(Integer, str)
-eval_latex.add_atom(Symbol, str)
-eval_latex.add_atom(Function, str)
-eval_latex.add_op_generic(lambda head, args: f'{head}({", ".join(args)})')
-eval_latex.add_op1(sin, lambda a: rf"\sin({a})")
-eval_latex.add_op1(cos, lambda a: rf"\cos({a})")
-eval_latex.add_op2(Pow, lambda b, e: f"{b}^{{{e}}}")
-eval_latex.add_opn(Add, lambda args: f'({" + ".join(args)})')
-eval_latex.add_opn(Mul, lambda args: "(%s)" % r" \times ".join(args))
+eval_latex[HeadRule(a, b)] = repr_call(a, b)
+eval_latex[Integer[a]] = str_from_int(a)
+eval_latex[Symbol[a]] = str_from_str(a)
+eval_latex[Function[a]] = str_from_str(a)
+eval_latex[Add(a)] = latex_add(a)
+eval_latex[Mul(a)] = latex_mul(a)
+eval_latex[a**b] = latex_pow(a, b)
+eval_latex[sin(a)] = latex_sin(a)
+eval_latex[cos(a)] = latex_cos(a)
+
+# ------------------------------------------------------------------------- #
+#                                                                           #
+#     binexpand: Expand associative operators to binary operations.         #
+#                                                                           #
+# ------------------------------------------------------------------------- #
 
 bin_expand = Transformer()
 bin_expand.add_opn(Add.rep, lambda args: reduce(Add.rep, args))
@@ -591,9 +647,12 @@ bin_expand.add_opn(Mul.rep, lambda args: reduce(Mul.rep, args))
 # Maybe it should be possible to just pass these as arguments to the Evaluator
 # constructor.
 #
+one_func = AtomFunc[int](lambda a: 1)
+sum_plus_one = HeadOp[int](lambda head, counts: 1 + sum(counts))
+
 count_ops_tree = Expr.new_evaluator("count_ops_tree", int)
-count_ops_tree.add_atom_generic(lambda atom: 1)
-count_ops_tree.add_op_generic(lambda head, argcounts: 1 + sum(argcounts))
+count_ops_tree[AtomRule[a]] = one_func(a)
+count_ops_tree[HeadRule(a, b)] = sum_plus_one(a, b)
 
 
 #
