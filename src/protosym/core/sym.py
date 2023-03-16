@@ -85,7 +85,7 @@ class Sym:
     as `__add__`. The :class:`Sym` class defines object construction to ensure
     that all instances of :class:`Sym` for any given subclass and underlying
     :class:`TreeExpr` are unique. Each :class:`Sym` instance holds an internal
-    `rep` attribute which to which all methods are delegated.
+    `rep` attribute to which all methods are delegated.
 
     >>> class Expr(Sym):
     ...     def __call__(self: Expr, *args: Expr) -> Expr:
