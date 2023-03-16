@@ -96,6 +96,7 @@ module = [
     'llvmlite.binding',
     'py',
     'symengine',
+    'numpy',
 ]
 ignore_missing_imports = true
 
