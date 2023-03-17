@@ -7,46 +7,30 @@ from functools import reduce
 from functools import wraps
 from typing import Any
 from typing import Callable
-from typing import Generic
 from typing import Optional
-from typing import Type
 from typing import TYPE_CHECKING as _TYPE_CHECKING
-from typing import TypeVar
 from typing import Union
-from weakref import WeakValueDictionary as _WeakDict
 
-from protosym.core.atom import AtomType
-from protosym.core.evaluate import Evaluator
 from protosym.core.evaluate import Transformer
 from protosym.core.exceptions import ProtoSymError
+from protosym.core.sym import AtomFunc
+from protosym.core.sym import AtomRule
+from protosym.core.sym import HeadOp
+from protosym.core.sym import HeadRule
+from protosym.core.sym import PyFunc1
+from protosym.core.sym import PyOp1
+from protosym.core.sym import PyOp2
+from protosym.core.sym import PyOpN
+from protosym.core.sym import star
+from protosym.core.sym import Sym
 from protosym.core.tree import forward_graph
 from protosym.core.tree import topological_sort
 from protosym.core.tree import TreeAtom
-from protosym.core.tree import TreeExpr
 
 
-T = TypeVar("T")
-
-
-class ExprAtomType(Generic[T]):
-    """Wrapper around AtomType to construct atoms as Expr."""
-
-    name: str
-    atom_type: AtomType[T]
-
-    def __init__(self, name: str, typ: Type[T]) -> None:
-        """New ExprAtomType."""
-        self.name = name
-        self.atom_type = AtomType(name, typ)
-
-    def __repr__(self) -> str:
-        """The name of the ExprAtomType."""
-        return self.name
-
-    def __call__(self, value: T) -> Expr:
-        """Create a new Atom as an Expr."""
-        atom = self.atom_type(value)
-        return Expr(TreeAtom[T](atom))
+if _TYPE_CHECKING:
+    from protosym.core.sym import SymEvaluator
+    from protosym.core.tree import TreeExpr
 
 
 class ExpressifyError(TypeError):
@@ -121,7 +105,7 @@ def expressify_other(method: ExprBinOp) -> ExpressifyBinOp:
     return expressify_method
 
 
-class Expr:
+class Expr(Sym):
     """User-facing class for representing expressions.
 
     To create an :class:`Expr` first import the basic types from
@@ -185,30 +169,11 @@ class Expr:
     to_sympy
     """
 
-    _all_expressions: _WeakDict[Any, Any] = _WeakDict()
-
-    rep: TreeExpr
-
-    def __new__(cls, tree_expr: TreeExpr) -> Expr:
-        """Create an Expr from a TreeExpr."""
-        if not isinstance(tree_expr, TreeExpr):
-            # Maybe call expressify here?
-            raise TypeError("First argument to Expr should be TreeExpr")
-
-        key = tree_expr
-
-        expr = cls._all_expressions.get(tree_expr, None)
-        if expr is not None:
-            return expr  # type:ignore
-
-        obj = super().__new__(cls)
-        obj.rep = tree_expr
-
-        obj = cls._all_expressions.setdefault(key, obj)
-
-        return obj
-
     def __repr__(self) -> str:
+        """Pretty string representation of the expression."""
+        return self.eval_repr()
+
+    def __str__(self) -> str:
         """Pretty string representation of the expression."""
         return self.eval_repr()
 
@@ -219,11 +184,6 @@ class Expr:
     def _sympy_(self) -> Any:
         """Hook for SymPy's ``sympify`` function."""
         return self.to_sympy()
-
-    @classmethod
-    def new_atom(cls, name: str, typ: Type[T]) -> ExprAtomType[T]:
-        """Define a new AtomType."""
-        return ExprAtomType[T](name, typ)
 
     def __call__(self, *args: Expressifiable) -> Expr:
         """Call this Expr as a function."""
@@ -291,7 +251,7 @@ class Expr:
 
     def eval_repr(self) -> str:
         """Pretty string e.g. "cos(x) + 1"."""
-        return eval_repr(self.rep)
+        return eval_repr(self)
 
     def eval_latex(self) -> str:
         r"""Return a LaTeX representaton of the expression.
@@ -304,7 +264,7 @@ class Expr:
         >>> print(expr.eval_latex())
         \sin(x^{2})
         """
-        return eval_latex(self.rep)
+        return eval_latex(self)
 
     def to_sympy(self) -> Any:
         """Convert to a SymPy expression.
@@ -380,17 +340,14 @@ class Expr:
         gives 53 bits of precision and a range of magnitudes approximately from
         :math:`10^{-300}` to :math:`10^{300}`.
         """
-        values_rep = {}
-        if values is not None:
-            values_rep = {e.rep: v for e, v in values.items()}
-        return eval_f64(self.rep, values_rep)
+        return eval_f64(self, values)
 
     def count_ops_tree(self) -> int:
         """Count operations in ``Expr`` following tree representation.
 
         See :meth:`count_ops_graph` for an explanation.
         """
-        return count_ops_tree(self.rep)
+        return count_ops_tree(self)
 
     def count_ops_graph(self) -> int:
         """Count operations in ``Expr`` following tree representation.
@@ -529,10 +486,10 @@ class Expr:
 
 
 # Avoid importing SymPy if possible.
-_eval_to_sympy: Evaluator[Any] | None = None
+_eval_to_sympy: SymEvaluator[Expr, Any] | None = None
 
 
-def _get_eval_to_sympy() -> Evaluator[Any]:
+def _get_eval_to_sympy() -> SymEvaluator[Expr, Any]:
     """Return an evaluator for converting to SymPy."""
     global _eval_to_sympy
     if _eval_to_sympy is not None:
@@ -540,15 +497,15 @@ def _get_eval_to_sympy() -> Evaluator[Any]:
 
     import sympy
 
-    eval_to_sympy = Evaluator[Any]()
-    eval_to_sympy.add_atom(Integer.atom_type, sympy.Integer)
-    eval_to_sympy.add_atom(Symbol.atom_type, sympy.Symbol)
-    eval_to_sympy.add_atom(Function.atom_type, sympy.Function)
-    eval_to_sympy.add_op1(sin.rep, sympy.sin)
-    eval_to_sympy.add_op1(cos.rep, sympy.cos)
-    eval_to_sympy.add_op2(Pow.rep, sympy.Pow)
-    eval_to_sympy.add_opn(Add.rep, lambda a: sympy.Add(*a))
-    eval_to_sympy.add_opn(Mul.rep, lambda a: sympy.Mul(*a))
+    eval_to_sympy = Expr.new_evaluator("to_sympy", object)
+    eval_to_sympy[Integer[a]] = PyFunc1(sympy.Integer)(a)
+    eval_to_sympy[Symbol[a]] = PyFunc1(sympy.Symbol)(a)
+    eval_to_sympy[Function[a]] = PyFunc1(sympy.Function)(a)
+    eval_to_sympy[Add(star(a))] = PyOpN[Any](lambda a: sympy.Add(*a))(a)
+    eval_to_sympy[Mul(star(a))] = PyOpN[Any](lambda a: sympy.Mul(*a))(a)
+    eval_to_sympy[a**b] = PyOp2(sympy.Pow)(a, b)
+    eval_to_sympy[sin(a)] = PyOp1(sympy.sin)(a)
+    eval_to_sympy[cos(a)] = PyOp1(sympy.cos)(a)
 
     # Store in the global to avoid recreating the Evaluator
     _eval_to_sympy = eval_to_sympy
@@ -559,7 +516,7 @@ def _get_eval_to_sympy() -> Evaluator[Any]:
 def to_sympy(expr: Expr) -> Any:
     """Convert ``Expr`` to a SymPy expression."""
     eval_to_sympy = _get_eval_to_sympy()
-    return eval_to_sympy(expr.rep)
+    return eval_to_sympy(expr)
 
 
 def from_sympy(expr: Any) -> Expr:
@@ -605,35 +562,83 @@ cos = Function("cos")
 Add = Function("Add")
 Mul = Function("Mul")
 
-eval_f64 = Evaluator[float]()
-eval_f64.add_atom(Integer.atom_type, float)
-eval_f64.add_op1(sin.rep, math.sin)
-eval_f64.add_op1(cos.rep, math.cos)
-eval_f64.add_op2(Pow.rep, pow)
-eval_f64.add_opn(Add.rep, math.fsum)
-eval_f64.add_opn(Mul.rep, math.prod)
+a = Expr.new_wild("a")
+b = Expr.new_wild("b")
 
-eval_repr = Evaluator[str]()
-eval_repr.add_atom(Integer.atom_type, str)
-eval_repr.add_atom(Symbol.atom_type, str)
-eval_repr.add_atom(Function.atom_type, str)
-eval_repr.add_op_generic(lambda head, args: f'{head}({", ".join(args)})')
-eval_repr.add_op1(sin.rep, lambda a: f"sin({a})")
-eval_repr.add_op1(cos.rep, lambda a: f"cos({a})")
-eval_repr.add_op2(Pow.rep, lambda b, e: f"{b}**{e}")
-eval_repr.add_opn(Add.rep, lambda args: f'({" + ".join(args)})')
-eval_repr.add_opn(Mul.rep, lambda args: f'({"*".join(args)})')
+# ------------------------------------------------------------------------- #
+#                                                                           #
+#     eval_f64: 64 bit floating point evaluation.                           #
+#                                                                           #
+# ------------------------------------------------------------------------- #
 
-eval_latex = Evaluator[str]()
-eval_latex.add_atom(Integer.atom_type, str)
-eval_latex.add_atom(Symbol.atom_type, str)
-eval_latex.add_atom(Function.atom_type, str)
-eval_latex.add_op_generic(lambda head, args: f'{head}({", ".join(args)})')
-eval_latex.add_op1(sin.rep, lambda a: rf"\sin({a})")
-eval_latex.add_op1(cos.rep, lambda a: rf"\cos({a})")
-eval_latex.add_op2(Pow.rep, lambda b, e: f"{b}^{{{e}}}")
-eval_latex.add_opn(Add.rep, lambda args: f'({" + ".join(args)})')
-eval_latex.add_opn(Mul.rep, lambda args: "(%s)" % r" \times ".join(args))
+f64_from_int = PyFunc1[int, float](float)
+f64_add = PyOpN[float](math.fsum)
+f64_mul = PyOpN[float](math.prod)
+f64_pow = PyOp2[float](math.pow)
+f64_sin = PyOp1[float](math.sin)
+f64_cos = PyOp1[float](math.cos)
+
+eval_f64 = Expr.new_evaluator("eval_f64", float)
+eval_f64[Integer[a]] = f64_from_int(a)
+eval_f64[Add(star(a))] = f64_add(a)
+eval_f64[Mul(star(a))] = f64_mul(a)
+eval_f64[a**b] = f64_pow(a, b)
+eval_f64[sin(a)] = f64_sin(a)
+eval_f64[cos(a)] = f64_cos(a)
+
+# ------------------------------------------------------------------------- #
+#                                                                           #
+#     eval_repr: Pretty string representation                               #
+#                                                                           #
+# ------------------------------------------------------------------------- #
+
+repr_atom = AtomFunc[str](str)
+repr_call = HeadOp[str](lambda head, args: f'{head}({", ".join(args)})')
+str_from_int = PyFunc1[int, str](str)
+str_from_str = PyFunc1[str, str](str)
+repr_add = PyOpN[str](lambda args: f'({" + ".join(args)})')
+repr_mul = PyOpN[str](lambda args: f'({"*".join(args)})')
+repr_pow = PyOp2[str](lambda b, e: f"{b}**{e}")
+
+
+eval_repr = Expr.new_evaluator("eval_repr", str)
+eval_repr[HeadRule(a, b)] = repr_call(a, b)
+eval_repr[AtomRule[a]] = repr_atom(a)
+eval_repr[Integer[a]] = str_from_int(a)
+eval_repr[Symbol[a]] = str_from_str(a)
+eval_repr[Function[a]] = str_from_str(a)
+eval_repr[Add(star(a))] = repr_add(a)
+eval_repr[Mul(star(a))] = repr_mul(a)
+eval_repr[a**b] = repr_pow(a, b)
+
+# ------------------------------------------------------------------------- #
+#                                                                           #
+#     latex: LaTeX string representation                                    #
+#                                                                           #
+# ------------------------------------------------------------------------- #
+
+latex_add = PyOpN(lambda args: f'({" + ".join(args)})')
+latex_mul = PyOpN(lambda args: "(%s)" % r" \times ".join(args))
+latex_pow = PyOp2(lambda b, e: f"{b}^{{{e}}}")
+latex_sin = PyOp1(lambda a: rf"\sin({a})")
+latex_cos = PyOp1(lambda a: rf"\cos({a})")
+
+eval_latex = Expr.new_evaluator("eval_latex", str)
+eval_latex[HeadRule(a, b)] = repr_call(a, b)
+eval_latex[Integer[a]] = str_from_int(a)
+eval_latex[Symbol[a]] = str_from_str(a)
+eval_latex[Function[a]] = str_from_str(a)
+eval_latex[Add(star(a))] = latex_add(a)
+eval_latex[Mul(star(a))] = latex_mul(a)
+eval_latex[a**b] = latex_pow(a, b)
+eval_latex[sin(a)] = latex_sin(a)
+eval_latex[cos(a)] = latex_cos(a)
+
+# ------------------------------------------------------------------------- #
+#                                                                           #
+#     binexpand: Expand associative operators to binary operations.         #
+#                                                                           #
+# ------------------------------------------------------------------------- #
 
 bin_expand = Transformer()
 bin_expand.add_opn(Add.rep, lambda args: reduce(Add.rep, args))
@@ -643,9 +648,12 @@ bin_expand.add_opn(Mul.rep, lambda args: reduce(Mul.rep, args))
 # Maybe it should be possible to just pass these as arguments to the Evaluator
 # constructor.
 #
-count_ops_tree = Evaluator[int]()
-count_ops_tree.add_atom_generic(lambda atom: 1)
-count_ops_tree.add_op_generic(lambda head, argcounts: 1 + sum(argcounts))
+one_func = AtomFunc[int](lambda a: 1)
+sum_plus_one = HeadOp[int](lambda head, counts: 1 + sum(counts))
+
+count_ops_tree = Expr.new_evaluator("count_ops_tree", int)
+count_ops_tree[AtomRule[a]] = one_func(a)
+count_ops_tree[HeadRule(a, b)] = sum_plus_one(a, b)
 
 
 #

@@ -1,10 +1,10 @@
 from pytest import raises
 from pytest import skip
 
+from protosym.core.sym import SymAtomType
 from protosym.simplecas import Add
 from protosym.simplecas import cos
 from protosym.simplecas import Expr
-from protosym.simplecas import ExprAtomType
 from protosym.simplecas import expressify
 from protosym.simplecas import ExpressifyError
 from protosym.simplecas import f
@@ -29,7 +29,7 @@ def test_simplecas_types() -> None:
     """Basic tests for type of Expr."""
     assert type(x) == Expr
     assert type(Mul) == Expr
-    assert type(Integer) == ExprAtomType
+    assert type(Integer) == SymAtomType
     assert type(Integer(1)) == Expr
     assert type(Mul(x, Integer(1))) == Expr
     raises(TypeError, lambda: Expr([]))  # type: ignore
@@ -117,6 +117,7 @@ def test_simplecas_repr() -> None:
     assert str(x * y) == "(x*y)"
     assert str(x**two) == "x**2"
     assert str(x + x + x) == "((x + x) + x)"
+    assert repr(x + x + x) == "((x + x) + x)"
 
 
 def test_simplecas_latex() -> None:

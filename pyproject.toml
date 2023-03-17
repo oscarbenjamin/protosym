@@ -80,6 +80,7 @@ fail_under = 100
 exclude_lines = [
     "pragma: no cover",
     "if _TYPE_CHECKING:",
+    "@overload",
 ]
 
 [tool.mypy]
@@ -96,6 +97,7 @@ module = [
     'llvmlite.binding',
     'py',
     'symengine',
+    'numpy',
 ]
 ignore_missing_imports = true
 
