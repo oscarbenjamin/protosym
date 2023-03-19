@@ -285,3 +285,12 @@ def test_simplecas_lambdify_llvm() -> None:
     val1 = expr1.eval_f64({x: 1.0})
     f = lambdify([x], expr1)
     assert f(1) == f(1.0) == val1
+
+
+def test_simplecas_lambdify_llvm_mat() -> None:
+    """Test simplecas lambdify for a simple matrix."""
+    from protosym.simplecas import _lambdify_llvm_matrix
+    import numpy as np
+
+    f = _lambdify_llvm_matrix()
+    assert np.all(f() == np.array([[1, 2], [3, 4]], float))
