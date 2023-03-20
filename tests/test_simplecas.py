@@ -8,6 +8,7 @@ from protosym.simplecas import Expr
 from protosym.simplecas import expressify
 from protosym.simplecas import ExpressifyError
 from protosym.simplecas import f
+from protosym.simplecas import g
 from protosym.simplecas import Integer
 from protosym.simplecas import lambdify
 from protosym.simplecas import List
@@ -354,8 +355,63 @@ def test_simplecas_lambdify_llvm() -> None:
 
 def test_simplecas_lambdify_llvm_mat() -> None:
     """Test simplecas lambdify for a simple matrix."""
-    from protosym.simplecas import _lambdify_llvm_matrix
     import numpy as np
 
-    f = _lambdify_llvm_matrix()
+    M = Matrix([[1, 2], [3, 4]])
+    f = lambdify([], M)
     assert np.all(f() == np.array([[1, 2], [3, 4]], float))
+
+    M = Matrix([[cos(x), sin(x)], [-sin(x), cos(x)]])
+    f = lambdify([x], M)
+    expected = np.array([[np.cos(1), np.sin(1)], [-np.sin(1), np.cos(1)]])
+    assert np.allclose(f(1), expected)
+
+    M = Matrix([[x, y], [x + y, x**y]])
+    f = lambdify([x, y], M)
+    expected = np.array([[2, 3], [5, 8]])
+    assert np.allclose(f(2, 3), expected)
+
+    M = Matrix([[1, 2, 0], [4, 0, 6]])
+    f = lambdify([], M)
+    expected = np.array([[1, 2, 0], [4, 0, 6]], np.float64)
+    assert np.all(f() == expected)
+
+    raises(LLVMNotImplementedError, lambda: lambdify([x], Matrix([[g(x)]])))
+    raises(LLVMNotImplementedError, lambda: lambdify([], Matrix([[x]])))
+
+
+def test_simplecas_lambdify_llvm_bad() -> None:
+    """Test lambdify unrecognised expression."""
+    raises(TypeError, lambda: lambdify([x], {}))  # type:ignore
+
+
+def test_simplecas_to_llvm_ir_matrix() -> None:
+    """Test IR generation for a Matrix."""
+    M = Matrix([[cos(x), sin(x)], [-sin(x), cos(x)]])
+    assert (
+        M.to_llvm_ir([x])
+        == """
+; ModuleID = "mod1"
+target triple = "unknown-unknown-unknown"
+target datalayout = ""
+
+declare double    @llvm.pow.f64(double %Val1, double %Val2)
+declare double    @llvm.sin.f64(double %Val)
+declare double    @llvm.cos.f64(double %Val)
+
+define void @"jit_func1"(double* %"_out", double %"x")
+{
+%".0" = call double @llvm.cos.f64(double %"x")
+%".1" = call double @llvm.sin.f64(double %"x")
+%".2" = fmul double 0xbff0000000000000, %".1"
+%".3" = getelementptr double, double* %"_out", i32 0
+store double %".0", double* %".3"
+%".4" = getelementptr double, double* %"_out", i32 1
+store double %".1", double* %".4"
+%".5" = getelementptr double, double* %"_out", i32 2
+store double %".2", double* %".5"
+%".6" = getelementptr double, double* %"_out", i32 3
+store double %".0", double* %".6"
+ret void
+}"""
+    )

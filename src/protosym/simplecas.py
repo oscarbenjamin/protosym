@@ -872,6 +872,39 @@ class Matrix:
         new_elements = list(Expr(elements_diff).args)
         return self._new(self.nrows, self.ncols, new_elements, self.entrymap)
 
+    def to_llvm_ir(self, symargs: list[Expr]) -> str:
+        """Return LLVM IR code evaluating this Matrix.
+
+        >>> from protosym.simplecas import sin, cos, x, Matrix
+        >>> M = Matrix([[cos(x), sin(x)], [-sin(x), cos(x)]])
+        >>> print(M.to_llvm_ir([x]))
+        ; ModuleID = "mod1"
+        target triple = "unknown-unknown-unknown"
+        target datalayout = ""
+        <BLANKLINE>
+        declare double    @llvm.pow.f64(double %Val1, double %Val2)
+        declare double    @llvm.sin.f64(double %Val)
+        declare double    @llvm.cos.f64(double %Val)
+        <BLANKLINE>
+        define void @"jit_func1"(double* %"_out", double %"x")
+        {
+        %".0" = call double @llvm.cos.f64(double %"x")
+        %".1" = call double @llvm.sin.f64(double %"x")
+        %".2" = fmul double 0xbff0000000000000, %".1"
+        %".3" = getelementptr double, double* %"_out", i32 0
+        store double %".0", double* %".3"
+        %".4" = getelementptr double, double* %"_out", i32 1
+        store double %".1", double* %".4"
+        %".5" = getelementptr double, double* %"_out", i32 2
+        store double %".2", double* %".5"
+        %".6" = getelementptr double, double* %"_out", i32 3
+        store double %".0", double* %".6"
+        ret void
+        }
+
+        """
+        return _to_llvm_f64_matrix([arg.rep for arg in symargs], self)
+
 
 # -------------------------------------------------
 # lambdification with LLVM
@@ -950,7 +983,7 @@ def _to_llvm_f64(symargs: list[TreeExpr], expression: TreeExpr) -> str:
     return module_code
 
 
-def lambdify(args: list[Expr], expression: Expr) -> Callable[..., float]:
+def lambdify(args: list[Expr], expression: Expr | Matrix) -> Callable[..., Any]:
     """Turn ``expression`` into an efficient callable function of ``args``.
 
     >>> from protosym.simplecas import Symbol, sin, lambdify
@@ -962,7 +995,12 @@ def lambdify(args: list[Expr], expression: Expr) -> Callable[..., float]:
     0.8414709848078965
     """
     args_rep = [arg.rep for arg in args]
-    return _lambdify_llvm(args_rep, expression.rep)
+    if isinstance(expression, Expr):
+        return _lambdify_llvm(args_rep, expression.rep)
+    elif isinstance(expression, Matrix):
+        return _lambdify_llvm_matrix(args_rep, expression)
+    else:
+        raise TypeError("Expression should be Expr or Matrix.")
 
 
 _exe_eng = []
@@ -1012,62 +1050,101 @@ def _lambdify_llvm(args: list[TreeExpr], expression: TreeExpr) -> Callable[..., 
     return cfunc
 
 
-module_code = """
-; ModuleID = "mod1"
-target triple = "unknown-unknown-unknown"
-target datalayout = ""
+def _to_llvm_f64_matrix(symargs: list[TreeExpr], mat: Matrix) -> str:  # noqa [C901]
+    """Code for LLVM IR function computing ``expression`` from ``symargs``."""
+    # expression = bin_expand(expression)
 
-declare double    @llvm.pow.f64(double %Val1, double %Val2)
-declare double    @llvm.sin.f64(double %Val)
-declare double    @llvm.cos.f64(double %Val)
+    graph = forward_graph(mat.elements_graph.rep)
 
-define void @"jit_func1"(double* %"x")
-{
-        %1 = getelementptr double, double* %"x", i32 0
-        store double 0x3ff0000000000000, double* %1
-        %2 = getelementptr double, double* %"x", i32 1
-        store double 0x4000000000000000, double* %2
-        %3 = getelementptr double, double* %"x", i32 2
-        store double 0x4008000000000000, double* %3
-        %4 = getelementptr double, double* %"x", i32 3
-        store double 0x4010000000000000, double* %4
-        ret void
-}
-"""
+    argnames = {s: f'%"{s}"' for s in symargs}  # noqa
 
-# 1, 2, 3, 4:
-# 0x3ff0000000000000
-# 0x4000000000000000
-# 0x4008000000000000
-# 0x4010000000000000
+    identifiers = []
+    for a in graph.atoms:
+        if a in symargs:
+            identifiers.append(argnames[a])
+        elif isinstance(a, TreeAtom) and a.value.atom_type == Integer.atom_type:
+            identifiers.append(_double_to_hex(a.value.value))
+        else:
+            raise LLVMNotImplementedError("No LLVM rule for: " + repr(a))
+
+    all_args = ['double* %"_out"'] + [f"double {argnames[arg]}" for arg in symargs]
+    all_args_str = ", ".join(all_args)
+    signature = f'define void @"jit_func1"({all_args_str})'
+
+    instructions: list[str] = []
+    for func, indices in graph.operations[:-1]:
+        n = len(instructions)
+        identifier = f'%".{n}"'
+        identifiers.append(identifier)
+        argids = [identifiers[i] for i in indices]
+
+        if func == Add.rep:
+            line = f"{identifier} = fadd double " + ", ".join(argids)
+        elif func == Mul.rep:
+            line = f"{identifier} = fmul double " + ", ".join(argids)
+        elif func == Pow.rep:
+            args = f"double {argids[0]}, double {argids[1]}"
+            line = f"{identifier} = call double @llvm.pow.f64({args})"
+        elif func == sin.rep:
+            line = f"{identifier} = call double @llvm.sin.f64(double {argids[0]})"
+        elif func == cos.rep:
+            line = f"{identifier} = call double @llvm.cos.f64(double {argids[0]})"
+        else:
+            raise LLVMNotImplementedError("No LLVM rule for: " + repr(func))
+
+        instructions.append(line)
+
+    # The above loop stops short of the final operation which should be the
+    # List at the top of the stack. Now all values are computed and just need
+    # to be copied to the relevant locations in the _out array.
+    _, indices = graph.operations[-1]
+
+    ncols = mat.ncols
+    identifier_count = len(instructions)
+    for (i, j), n in sorted(mat.entrymap.items()):
+        raw_index = i * ncols + j
+        identifier_value = identifiers[indices[n]]
+        ptr = f'%".{identifier_count}"'
+        identifier_count += 1
+        line1 = f'{ptr} = getelementptr double, double* %"_out", i32 {raw_index}'
+        line2 = f"store double {identifier_value}, double* {ptr}"
+        instructions.append(line1)
+        instructions.append(line2)
+
+    instructions.append("ret void")
+
+    function_lines = [signature, "{", *instructions, "}"]
+    module_code = _llvm_header + "\n".join(function_lines)
+    return module_code
 
 
-def _lambdify_llvm_matrix() -> Callable[..., Any]:
+def _lambdify_llvm_matrix(args: list[TreeExpr], mat: Matrix) -> Callable[..., Any]:
     """Lambdify a matrix.
 
-    >>> from protosym.simplecas import _lambdify_llvm_matrix
-    >>> f = _lambdify_llvm_matrix()
+    >>> from protosym.simplecas import lambdify, Matrix
+    >>> f = lambdify([], Matrix([[1, 2], [3, 4]]))
     >>> f()
     array([[1., 2.],
            [3., 4.]])
     """
     import ctypes
 
+    module_code = _to_llvm_f64_matrix(args, mat)
+
     fptr = _compile_llvm(module_code)
 
     c_float64 = ctypes.POINTER(ctypes.c_double)
     rettype = ctypes.c_double
-    argtypes = [c_float64]
+    argtypes = [c_float64] + [ctypes.c_double] * len(args)
 
     cfunc = ctypes.CFUNCTYPE(rettype, *argtypes)(fptr)
 
     import numpy as np
 
-    def npfunc() -> Any:
-        c_float64 = ctypes.POINTER(ctypes.c_double)
-        arr = np.zeros((2, 2), np.float64)
+    def npfunc(*args: float) -> Any:
+        arr = np.zeros(mat.shape, np.float64)
         arr_p = arr.ctypes.data_as(c_float64)
-        cfunc(arr_p)
+        cfunc(arr_p, *args)
         return arr
 
     return npfunc
