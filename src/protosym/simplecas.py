@@ -8,6 +8,7 @@ from functools import wraps
 from typing import Any
 from typing import Callable
 from typing import Optional
+from typing import Sequence
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import Union
 
@@ -731,6 +732,8 @@ def _diff_forward(expression: TreeExpr, sym: TreeExpr) -> TreeExpr:
             diff_terms = [da for da in diff_args if da != zero.rep]
         elif func == Mul.rep:
             diff_terms = _prod_rule_forward(args, diff_args)
+        elif func == List.rep:
+            diff_terms = [List.rep(*diff_args)]
         else:
             diff_terms = _chain_rule_forward(func, args, diff_args)
 
@@ -748,6 +751,126 @@ def _diff_forward(expression: TreeExpr, sym: TreeExpr) -> TreeExpr:
     # list of derivatives of every subexpression in expr. At the top of the
     # stack is expr and its derivative is at the top of diff_stack.
     return diff_stack[-1]
+
+
+# -------------------------------------------------
+# Matrices
+# ------------------------------------------------
+
+
+List = Function("List")
+
+
+class Matrix:
+    """Matrix of Expr."""
+
+    nrows: int
+    ncols: int
+    shape: tuple[int, int]
+    elements: list[Expr]
+    elements_graph: Expr
+    entrymap: dict[tuple[int, int], int]
+
+    def __new__(cls, entries: Sequence[Sequence[Expressifiable]]) -> Matrix:
+        """New Matrix from a list of lists."""
+        if not isinstance(entries, list) or not all(
+            isinstance(row, list) for row in entries
+        ):
+            raise TypeError("Input should be a list of lists.")
+
+        nrows = len(entries)
+        ncols = len(entries[0])
+        if not all(len(row) == ncols for row in entries):
+            raise TypeError("All rows should be the same length.")
+
+        entries_expr = [[expressify(e) for e in row] for row in entries]
+
+        elements: list[Expr] = []
+        entrymap = {}
+        for i, row in enumerate(entries_expr):
+            for j, entry in enumerate(row):
+                if entry != zero:
+                    entrymap[(i, j)] = len(elements)
+                    elements.append(entry)
+
+        return cls._new(nrows, ncols, elements, entrymap)
+
+    @classmethod
+    def _new(
+        cls,
+        nrows: int,
+        ncols: int,
+        elements: list[Expr],
+        entrymap: dict[tuple[int, int], int],
+    ) -> Matrix:
+        """New matrix from the internal representation."""
+        obj = super().__new__(cls)
+        obj.nrows = nrows
+        obj.ncols = ncols
+        obj.shape = (nrows, ncols)
+        obj.elements = list(elements)
+        obj.elements_graph = List(*elements)
+        obj.entrymap = entrymap
+        return obj
+
+    def __getitem__(self, ij: tuple[int, int]) -> Expr:
+        """Element indexing ``M[i, j]``."""
+        if isinstance(ij, tuple) and len(ij) == 2:
+            i, j = ij
+            if isinstance(i, int) and isinstance(j, int):
+                if not (0 <= i < self.nrows and 0 <= j < self.ncols):
+                    raise IndexError("Indices out of bounds.")
+                if ij in self.entrymap:
+                    return self.elements[self.entrymap[ij]]
+                else:
+                    return zero
+        raise TypeError("Matrix indices should be a pair of integers.")
+
+    def tolist(self) -> list[list[Expr]]:
+        """Convert to list of lists format."""
+        entries = [[zero] * self.ncols for _ in range(self.nrows)]
+        for (i, j), n in self.entrymap.items():
+            entries[i][j] = self.elements[n]
+        return entries
+
+    def __repr__(self) -> str:
+        """Convert to pretty representation."""
+        # Inefficient because does not use a graph...
+        # (This computes separate repr for each element)
+        return f"Matrix({self.tolist()!r})"
+
+    def __add__(self, other: Matrix) -> Matrix:
+        """Matrix addition A + B -> C."""
+        if not isinstance(other, Matrix):
+            return NotImplemented
+        return self.binop(other, Add)
+
+    def binop(self, other: Matrix, func: Expr) -> Matrix:
+        """Elementwise binary operaton on two matrices."""
+        if self.shape != other.shape:
+            raise TypeError("Shape mismatch.")
+        new_elements = self.elements.copy()
+        new_entrymap = self.entrymap.copy()
+        for ij, n_other in other.entrymap.items():
+            if ij in new_entrymap:
+                self_ij = new_elements[new_entrymap[ij]]
+                other_ij = other.elements[n_other]
+                result = func(self_ij, other_ij)
+                new_elements[new_entrymap[ij]] = result
+            else:
+                new_entrymap[ij] = len(new_elements)
+                new_elements.append(other.elements[n_other])
+        return self._new(self.nrows, self.ncols, new_elements, new_entrymap)
+
+    def diff(self, sym: Expr) -> Matrix:
+        """Differentiate Matrix wrt ``sym``."""
+        if not isinstance(sym, Expr):
+            raise TypeError("Differentiation var should be a symbol.")
+        # Use the element_graph rather than differentiating each element
+        # separately.
+        elements_diff = _diff_forward(self.elements_graph.rep, sym.rep)
+        new_elements = list(Expr(elements_diff).args)
+        return self._new(self.nrows, self.ncols, new_elements, self.entrymap)
 
 
 # -------------------------------------------------

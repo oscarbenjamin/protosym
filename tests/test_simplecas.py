@@ -10,7 +10,9 @@ from protosym.simplecas import ExpressifyError
 from protosym.simplecas import f
 from protosym.simplecas import Integer
 from protosym.simplecas import lambdify
+from protosym.simplecas import List
 from protosym.simplecas import LLVMNotImplementedError
+from protosym.simplecas import Matrix
 from protosym.simplecas import Mul
 from protosym.simplecas import negone
 from protosym.simplecas import one
@@ -250,6 +252,69 @@ def test_simplecas_bin_expand() -> None:
     assert expr2.bin_expand() == Add(Add(x, y), Mul(Mul(Mul(x, y), 1), f(x)))
     assert str(expr2) == "(x + y + (x*y*1*f(x)))"
     assert str(expr2.bin_expand()) == "((x + y) + (((x*y)*1)*f(x)))"
+
+
+def test_simplecas_Matrix_constructor() -> None:
+    """Test creating a Matrix."""
+    M = Matrix([[1, 2, 3], [x, 0, 0]])
+    assert isinstance(M, Matrix)
+    assert M.nrows == 2
+    assert M.ncols == 3
+    assert M.shape == (2, 3)
+    elements = [Integer(1), Integer(2), Integer(3), Symbol("x")]
+    assert M.elements == elements
+    assert M.elements_graph == List(*elements)
+    assert M.entrymap == {(0, 0): 0, (0, 1): 1, (0, 2): 2, (1, 0): 3}
+
+    raises(TypeError, lambda: Matrix({}))  # type:ignore
+    raises(TypeError, lambda: Matrix([{}]))  # type:ignore
+    raises(TypeError, lambda: Matrix([[1, 2], [3]]))
+    raises(TypeError, lambda: Matrix([[1, 2], [3, {}]]))  # type:ignore
+
+
+def test_simplecas_Matrix_getitem() -> None:
+    """Test indexing a Matrix."""
+    M = Matrix([[1, 2], [x, 0]])
+    assert M[0, 0] == Integer(1)
+    assert M[0, 1] == Integer(2)
+    assert M[1, 0] == Symbol("x")
+    assert M[1, 1] == Integer(0)
+
+    raises(TypeError, lambda: M[0])  # type:ignore
+    raises(TypeError, lambda: M[0, 1, 2])  # type:ignore
+    raises(TypeError, lambda: M[[], []])  # type:ignore
+    raises(IndexError, lambda: M[-1, -1])
+    raises(IndexError, lambda: M[2, 2])
+
+
+def test_simplecas_Matrix_tolist() -> None:
+    """Test converting Matrix to list of lists."""
+    items = [[one, zero], [x, zero]]
+    assert Matrix(items).tolist() == items
+
+
+def test_simplecas_Matrix_repr() -> None:
+    """Test Matrix repr."""
+    M = Matrix([[1, 2], [x, 0]])
+    assert repr(M) == "Matrix([[1, 2], [x, 0]])"
+
+
+def test_simplecas_Matrix_add() -> None:
+    """Test Matrix repr."""
+    M1 = Matrix([[1, 0], [x, 0]])
+    M2 = Matrix([[0, 1], [x, 0]])
+    assert (M1 + M2).tolist() == [[one, one], [x + x, zero]]
+
+    M3 = Matrix([[0]])
+    raises(TypeError, lambda: M1 + M3)
+    raises(TypeError, lambda: M1 + [])  # type:ignore
+
+
+def test_simplecas_Matrix_diff() -> None:
+    """Test Matrix repr."""
+    M = Matrix([[1, 2], [x, 0]])
+    assert M.diff(x).tolist() == [[zero, zero], [one, zero]]
+    raises(TypeError, lambda: M.diff([]))  # type:ignore
 
 
 def test_simplecas_to_llvm_ir() -> None:
