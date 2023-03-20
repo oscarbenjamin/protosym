@@ -8,9 +8,12 @@ from protosym.simplecas import Expr
 from protosym.simplecas import expressify
 from protosym.simplecas import ExpressifyError
 from protosym.simplecas import f
+from protosym.simplecas import g
 from protosym.simplecas import Integer
 from protosym.simplecas import lambdify
+from protosym.simplecas import List
 from protosym.simplecas import LLVMNotImplementedError
+from protosym.simplecas import Matrix
 from protosym.simplecas import Mul
 from protosym.simplecas import negone
 from protosym.simplecas import one
@@ -252,6 +255,69 @@ def test_simplecas_bin_expand() -> None:
     assert str(expr2.bin_expand()) == "((x + y) + (((x*y)*1)*f(x)))"
 
 
+def test_simplecas_Matrix_constructor() -> None:
+    """Test creating a Matrix."""
+    M = Matrix([[1, 2, 3], [x, 0, 0]])
+    assert isinstance(M, Matrix)
+    assert M.nrows == 2
+    assert M.ncols == 3
+    assert M.shape == (2, 3)
+    elements = [Integer(1), Integer(2), Integer(3), Symbol("x")]
+    assert M.elements == elements
+    assert M.elements_graph == List(*elements)
+    assert M.entrymap == {(0, 0): 0, (0, 1): 1, (0, 2): 2, (1, 0): 3}
+
+    raises(TypeError, lambda: Matrix({}))  # type:ignore
+    raises(TypeError, lambda: Matrix([{}]))  # type:ignore
+    raises(TypeError, lambda: Matrix([[1, 2], [3]]))
+    raises(TypeError, lambda: Matrix([[1, 2], [3, {}]]))  # type:ignore
+
+
+def test_simplecas_Matrix_getitem() -> None:
+    """Test indexing a Matrix."""
+    M = Matrix([[1, 2], [x, 0]])
+    assert M[0, 0] == Integer(1)
+    assert M[0, 1] == Integer(2)
+    assert M[1, 0] == Symbol("x")
+    assert M[1, 1] == Integer(0)
+
+    raises(TypeError, lambda: M[0])  # type:ignore
+    raises(TypeError, lambda: M[0, 1, 2])  # type:ignore
+    raises(TypeError, lambda: M[[], []])  # type:ignore
+    raises(IndexError, lambda: M[-1, -1])
+    raises(IndexError, lambda: M[2, 2])
+
+
+def test_simplecas_Matrix_tolist() -> None:
+    """Test converting Matrix to list of lists."""
+    items = [[one, zero], [x, zero]]
+    assert Matrix(items).tolist() == items
+
+
+def test_simplecas_Matrix_repr() -> None:
+    """Test Matrix repr."""
+    M = Matrix([[1, 2], [x, 0]])
+    assert repr(M) == "Matrix([[1, 2], [x, 0]])"
+
+
+def test_simplecas_Matrix_add() -> None:
+    """Test Matrix repr."""
+    M1 = Matrix([[1, 0], [x, 0]])
+    M2 = Matrix([[0, 1], [x, 0]])
+    assert (M1 + M2).tolist() == [[one, one], [x + x, zero]]
+
+    M3 = Matrix([[0]])
+    raises(TypeError, lambda: M1 + M3)
+    raises(TypeError, lambda: M1 + [])  # type:ignore
+
+
+def test_simplecas_Matrix_diff() -> None:
+    """Test Matrix repr."""
+    M = Matrix([[1, 2], [x, 0]])
+    assert M.diff(x).tolist() == [[zero, zero], [one, zero]]
+    raises(TypeError, lambda: M.diff([]))  # type:ignore
+
+
 def test_simplecas_to_llvm_ir() -> None:
     """Test converting Expr to LLVM IR."""
     expr1 = sin(cos(x)) * x**2 + 1
@@ -285,3 +351,73 @@ def test_simplecas_lambdify_llvm() -> None:
     val1 = expr1.eval_f64({x: 1.0})
     f = lambdify([x], expr1)
     assert f(1) == f(1.0) == val1
+
+
+def test_simplecas_lambdify_llvm_mat() -> None:
+    """Test simplecas lambdify for a simple matrix."""
+    import numpy as np
+
+    M = Matrix([[1, 2], [3, 4]])
+    f = lambdify([], M)
+    assert np.all(f() == np.array([[1, 2], [3, 4]], float))
+
+    M = Matrix([[cos(x), sin(x)], [-sin(x), cos(x)]])
+    f = lambdify([x], M)
+    expected = np.array([[np.cos(1), np.sin(1)], [-np.sin(1), np.cos(1)]])
+    assert np.allclose(f(1), expected)
+
+    M = Matrix([[x, y], [x + y, x**y]])
+    f = lambdify([x, y], M)
+    expected = np.array([[2, 3], [5, 8]])
+    assert np.allclose(f(2, 3), expected)
+
+    M = Matrix([[1, 2, 0], [4, 0, 6]])
+    f = lambdify([], M)
+    expected = np.array([[1, 2, 0], [4, 0, 6]], np.float64)
+    assert np.all(f() == expected)
+
+    z = Symbol("z")
+    M = Matrix([[Add(x, y, z), Mul(x, y, z)]])
+    f = lambdify([x, y, z], M)
+    expected = np.array([[9, 24]], np.float64)
+    assert np.all(f(2, 3, 4) == expected)
+
+    raises(LLVMNotImplementedError, lambda: lambdify([x], Matrix([[g(x)]])))
+    raises(LLVMNotImplementedError, lambda: lambdify([], Matrix([[x]])))
+
+
+def test_simplecas_lambdify_llvm_bad() -> None:
+    """Test lambdify unrecognised expression."""
+    raises(TypeError, lambda: lambdify([x], {}))  # type:ignore
+
+
+def test_simplecas_to_llvm_ir_matrix() -> None:
+    """Test IR generation for a Matrix."""
+    M = Matrix([[cos(x), sin(x)], [-sin(x), cos(x)]])
+    assert (
+        M.to_llvm_ir([x])
+        == """
+; ModuleID = "mod1"
+target triple = "unknown-unknown-unknown"
+target datalayout = ""
+
+declare double    @llvm.pow.f64(double %Val1, double %Val2)
+declare double    @llvm.sin.f64(double %Val)
+declare double    @llvm.cos.f64(double %Val)
+
+define void @"jit_func1"(double* %"_out", double %"x")
+{
+%".0" = call double @llvm.cos.f64(double %"x")
+%".1" = call double @llvm.sin.f64(double %"x")
+%".2" = fmul double 0xbff0000000000000, %".1"
+%".3" = getelementptr double, double* %"_out", i32 0
+store double %".0", double* %".3"
+%".4" = getelementptr double, double* %"_out", i32 1
+store double %".1", double* %".4"
+%".5" = getelementptr double, double* %"_out", i32 2
+store double %".2", double* %".5"
+%".6" = getelementptr double, double* %"_out", i32 3
+store double %".0", double* %".6"
+ret void
+}"""
+    )

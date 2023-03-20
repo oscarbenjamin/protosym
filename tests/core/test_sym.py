@@ -40,17 +40,19 @@ class Expr(Sym):
         return Expr(self.rep(*args_rep))
 
 
-def _make_atoms() -> tuple[
-    SymAtomType[Expr, int],
-    SymAtomType[Expr, str],
-    Expr,
-    Expr,
-    Expr,
-    Expr,
-    Expr,
-    Expr,
-    Expr,
-]:
+def _make_atoms() -> (
+    tuple[
+        SymAtomType[Expr, int],
+        SymAtomType[Expr, str],
+        Expr,
+        Expr,
+        Expr,
+        Expr,
+        Expr,
+        Expr,
+        Expr,
+    ]
+):
     """Set up a Sym subclass and create some atoms etc."""
     Integer = Expr.new_atom("Integer", int)
     Function = Expr.new_atom("Function", str)

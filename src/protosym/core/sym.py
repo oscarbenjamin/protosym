@@ -270,7 +270,6 @@ class PyFunc:
 
 
 class WildCall(Generic[T_sym, T_op]):
-
     __slots__ = ("op", "args")
 
     def __init__(self, op: T_op, *args: T_sym):

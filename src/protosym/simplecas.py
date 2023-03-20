@@ -8,6 +8,7 @@ from functools import wraps
 from typing import Any
 from typing import Callable
 from typing import Optional
+from typing import Sequence
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import Union
 
@@ -731,6 +732,8 @@ def _diff_forward(expression: TreeExpr, sym: TreeExpr) -> TreeExpr:
             diff_terms = [da for da in diff_args if da != zero.rep]
         elif func == Mul.rep:
             diff_terms = _prod_rule_forward(args, diff_args)
+        elif func == List.rep:
+            diff_terms = [List.rep(*diff_args)]
         else:
             diff_terms = _chain_rule_forward(func, args, diff_args)
 
@@ -748,6 +751,159 @@ def _diff_forward(expression: TreeExpr, sym: TreeExpr) -> TreeExpr:
     # list of derivatives of every subexpression in expr. At the top of the
     # stack is expr and its derivative is at the top of diff_stack.
     return diff_stack[-1]
+
+
+# -------------------------------------------------
+# Matrices
+# ------------------------------------------------
+
+
+List = Function("List")
+
+
+class Matrix:
+    """Matrix of Expr."""
+
+    nrows: int
+    ncols: int
+    shape: tuple[int, int]
+    elements: list[Expr]
+    elements_graph: Expr
+    entrymap: dict[tuple[int, int], int]
+
+    def __new__(cls, entries: Sequence[Sequence[Expressifiable]]) -> Matrix:
+        """New Matrix from a list of lists."""
+        if not isinstance(entries, list) or not all(
+            isinstance(row, list) for row in entries
+        ):
+            raise TypeError("Input should be a list of lists.")
+
+        nrows = len(entries)
+        ncols = len(entries[0])
+        if not all(len(row) == ncols for row in entries):
+            raise TypeError("All rows should be the same length.")
+
+        entries_expr = [[expressify(e) for e in row] for row in entries]
+
+        elements: list[Expr] = []
+        entrymap = {}
+        for i, row in enumerate(entries_expr):
+            for j, entry in enumerate(row):
+                if entry != zero:
+                    entrymap[(i, j)] = len(elements)
+                    elements.append(entry)
+
+        return cls._new(nrows, ncols, elements, entrymap)
+
+    @classmethod
+    def _new(
+        cls,
+        nrows: int,
+        ncols: int,
+        elements: list[Expr],
+        entrymap: dict[tuple[int, int], int],
+    ) -> Matrix:
+        """New matrix from the internal representation."""
+        obj = super().__new__(cls)
+        obj.nrows = nrows
+        obj.ncols = ncols
+        obj.shape = (nrows, ncols)
+        obj.elements = list(elements)
+        obj.elements_graph = List(*elements)
+        obj.entrymap = entrymap
+        return obj
+
+    def __getitem__(self, ij: tuple[int, int]) -> Expr:
+        """Element indexing ``M[i, j]``."""
+        if isinstance(ij, tuple) and len(ij) == 2:
+            i, j = ij
+            if isinstance(i, int) and isinstance(j, int):
+                if not (0 <= i < self.nrows and 0 <= j < self.ncols):
+                    raise IndexError("Indices out of bounds.")
+                if ij in self.entrymap:
+                    return self.elements[self.entrymap[ij]]
+                else:
+                    return zero
+        raise TypeError("Matrix indices should be a pair of integers.")
+
+    def tolist(self) -> list[list[Expr]]:
+        """Convert to list of lists format."""
+        entries = [[zero] * self.ncols for _ in range(self.nrows)]
+        for (i, j), n in self.entrymap.items():
+            entries[i][j] = self.elements[n]
+        return entries
+
+    def __repr__(self) -> str:
+        """Convert to pretty representation."""
+        # Inefficient because does not use a graph...
+        # (This computes separate repr for each element)
+        return f"Matrix({self.tolist()!r})"
+
+    def __add__(self, other: Matrix) -> Matrix:
+        """Matrix addition A + B -> C."""
+        if not isinstance(other, Matrix):
+            return NotImplemented
+        return self.binop(other, Add)
+
+    def binop(self, other: Matrix, func: Expr) -> Matrix:
+        """Elementwise binary operaton on two matrices."""
+        if self.shape != other.shape:
+            raise TypeError("Shape mismatch.")
+        new_elements = self.elements.copy()
+        new_entrymap = self.entrymap.copy()
+        for ij, n_other in other.entrymap.items():
+            if ij in new_entrymap:
+                self_ij = new_elements[new_entrymap[ij]]
+                other_ij = other.elements[n_other]
+                result = func(self_ij, other_ij)
+                new_elements[new_entrymap[ij]] = result
+            else:
+                new_entrymap[ij] = len(new_elements)
+                new_elements.append(other.elements[n_other])
+        return self._new(self.nrows, self.ncols, new_elements, new_entrymap)
+
+    def diff(self, sym: Expr) -> Matrix:
+        """Differentiate Matrix wrt ``sym``."""
+        if not isinstance(sym, Expr):
+            raise TypeError("Differentiation var should be a symbol.")
+        # Use the element_graph rather than differentiating each element
+        # separately.
+        elements_diff = _diff_forward(self.elements_graph.rep, sym.rep)
+        new_elements = list(Expr(elements_diff).args)
+        return self._new(self.nrows, self.ncols, new_elements, self.entrymap)
+
+    def to_llvm_ir(self, symargs: list[Expr]) -> str:
+        """Return LLVM IR code evaluating this Matrix.
+
+        >>> from protosym.simplecas import sin, cos, x, Matrix
+        >>> M = Matrix([[cos(x), sin(x)], [-sin(x), cos(x)]])
+        >>> print(M.to_llvm_ir([x]))
+        ; ModuleID = "mod1"
+        target triple = "unknown-unknown-unknown"
+        target datalayout = ""
+        <BLANKLINE>
+        declare double    @llvm.pow.f64(double %Val1, double %Val2)
+        declare double    @llvm.sin.f64(double %Val)
+        declare double    @llvm.cos.f64(double %Val)
+        <BLANKLINE>
+        define void @"jit_func1"(double* %"_out", double %"x")
+        {
+        %".0" = call double @llvm.cos.f64(double %"x")
+        %".1" = call double @llvm.sin.f64(double %"x")
+        %".2" = fmul double 0xbff0000000000000, %".1"
+        %".3" = getelementptr double, double* %"_out", i32 0
+        store double %".0", double* %".3"
+        %".4" = getelementptr double, double* %"_out", i32 1
+        store double %".1", double* %".4"
+        %".5" = getelementptr double, double* %"_out", i32 2
+        store double %".2", double* %".5"
+        %".6" = getelementptr double, double* %"_out", i32 3
+        store double %".0", double* %".6"
+        ret void
+        }
+
+        """
+        return _to_llvm_f64_matrix([arg.rep for arg in symargs], self)
 
 
 # -------------------------------------------------
@@ -827,7 +983,7 @@ def _to_llvm_f64(symargs: list[TreeExpr], expression: TreeExpr) -> str:
     return module_code
 
 
-def lambdify(args: list[Expr], expression: Expr) -> Callable[..., float]:
+def lambdify(args: list[Expr], expression: Expr | Matrix) -> Callable[..., Any]:
     """Turn ``expression`` into an efficient callable function of ``args``.
 
     >>> from protosym.simplecas import Symbol, sin, lambdify
@@ -839,18 +995,18 @@ def lambdify(args: list[Expr], expression: Expr) -> Callable[..., float]:
     0.8414709848078965
     """
     args_rep = [arg.rep for arg in args]
-    return _lambdify_llvm(args_rep, expression.rep)
+    if isinstance(expression, Expr):
+        return _lambdify_llvm(args_rep, expression.rep)
+    elif isinstance(expression, Matrix):
+        return _lambdify_llvm_matrix(args_rep, expression)
+    else:
+        raise TypeError("Expression should be Expr or Matrix.")
 
 
 _exe_eng = []
 
 
-def _lambdify_llvm(args: list[TreeExpr], expression: TreeExpr) -> Callable[..., float]:
-    """Lambdify using llvmlite."""
-    module_code = _to_llvm_f64(args, expression)
-
-    import ctypes
-
+def _compile_llvm(module_code: str) -> Any:
     try:
         import llvmlite.binding as llvm
     except ImportError:  # pragma: no cover
@@ -876,9 +1032,119 @@ def _lambdify_llvm(args: list[TreeExpr], expression: TreeExpr) -> Callable[..., 
     _exe_eng.append(exe_eng)
 
     fptr = exe_eng.get_function_address("jit_func1")
+    return fptr
+
+
+def _lambdify_llvm(args: list[TreeExpr], expression: TreeExpr) -> Callable[..., float]:
+    """Lambdify using llvmlite."""
+    import ctypes
+
+    module_code = _to_llvm_f64(args, expression)
+
+    fptr = _compile_llvm(module_code)
 
     rettype = ctypes.c_double
     argtypes = [ctypes.c_double] * len(args)
 
     cfunc = ctypes.CFUNCTYPE(rettype, *argtypes)(fptr)
     return cfunc
+
+
+def _to_llvm_f64_matrix(symargs: list[TreeExpr], mat: Matrix) -> str:  # noqa [C901]
+    """Code for LLVM IR function computing ``expression`` from ``symargs``."""
+    elements_graph = bin_expand(mat.elements_graph.rep)
+
+    graph = forward_graph(elements_graph)
+
+    argnames = {s: f'%"{s}"' for s in symargs}  # noqa
+
+    identifiers = []
+    for a in graph.atoms:
+        if a in symargs:
+            identifiers.append(argnames[a])
+        elif isinstance(a, TreeAtom) and a.value.atom_type == Integer.atom_type:
+            identifiers.append(_double_to_hex(a.value.value))
+        else:
+            raise LLVMNotImplementedError("No LLVM rule for: " + repr(a))
+
+    all_args = ['double* %"_out"'] + [f"double {argnames[arg]}" for arg in symargs]
+    all_args_str = ", ".join(all_args)
+    signature = f'define void @"jit_func1"({all_args_str})'
+
+    instructions: list[str] = []
+    for func, indices in graph.operations[:-1]:
+        n = len(instructions)
+        identifier = f'%".{n}"'
+        identifiers.append(identifier)
+        argids = [identifiers[i] for i in indices]
+
+        if func == Add.rep:
+            line = f"{identifier} = fadd double " + ", ".join(argids)
+        elif func == Mul.rep:
+            line = f"{identifier} = fmul double " + ", ".join(argids)
+        elif func == Pow.rep:
+            args = f"double {argids[0]}, double {argids[1]}"
+            line = f"{identifier} = call double @llvm.pow.f64({args})"
+        elif func == sin.rep:
+            line = f"{identifier} = call double @llvm.sin.f64(double {argids[0]})"
+        elif func == cos.rep:
+            line = f"{identifier} = call double @llvm.cos.f64(double {argids[0]})"
+        else:
+            raise LLVMNotImplementedError("No LLVM rule for: " + repr(func))
+
+        instructions.append(line)
+
+    # The above loop stops short of the final operation which should be the
+    # List at the top of the stack. Now all values are computed and just need
+    # to be copied to the relevant locations in the _out array.
+    _, indices = graph.operations[-1]
+
+    ncols = mat.ncols
+    identifier_count = len(instructions)
+    for (i, j), n in sorted(mat.entrymap.items()):
+        raw_index = i * ncols + j
+        identifier_value = identifiers[indices[n]]
+        ptr = f'%".{identifier_count}"'
+        identifier_count += 1
+        line1 = f'{ptr} = getelementptr double, double* %"_out", i32 {raw_index}'
+        line2 = f"store double {identifier_value}, double* {ptr}"
+        instructions.append(line1)
+        instructions.append(line2)
+
+    instructions.append("ret void")
+
+    function_lines = [signature, "{", *instructions, "}"]
+    module_code = _llvm_header + "\n".join(function_lines)
+    return module_code
+
+
+def _lambdify_llvm_matrix(args: list[TreeExpr], mat: Matrix) -> Callable[..., Any]:
+    """Lambdify a matrix.
+
+    >>> from protosym.simplecas import lambdify, Matrix
+    >>> f = lambdify([], Matrix([[1, 2], [3, 4]]))
+    >>> f()
+    array([[1., 2.],
+           [3., 4.]])
+    """
+    import ctypes
+
+    module_code = _to_llvm_f64_matrix(args, mat)
+
+    fptr = _compile_llvm(module_code)
+
+    c_float64 = ctypes.POINTER(ctypes.c_double)
+    rettype = ctypes.c_double
+    argtypes = [c_float64] + [ctypes.c_double] * len(args)
+
+    cfunc = ctypes.CFUNCTYPE(rettype, *argtypes)(fptr)
+
+    import numpy as np
+
+    def npfunc(*args: float) -> Any:
+        arr = np.zeros(mat.shape, np.float64)
+        arr_p = arr.ctypes.data_as(c_float64)
+        cfunc(arr_p, *args)
+        return arr
+
+    return npfunc
