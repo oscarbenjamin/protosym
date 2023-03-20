@@ -1052,9 +1052,9 @@ def _lambdify_llvm(args: list[TreeExpr], expression: TreeExpr) -> Callable[..., 
 
 def _to_llvm_f64_matrix(symargs: list[TreeExpr], mat: Matrix) -> str:  # noqa [C901]
     """Code for LLVM IR function computing ``expression`` from ``symargs``."""
-    # expression = bin_expand(expression)
+    elements_graph = bin_expand(mat.elements_graph.rep)
 
-    graph = forward_graph(mat.elements_graph.rep)
+    graph = forward_graph(elements_graph)
 
     argnames = {s: f'%"{s}"' for s in symargs}  # noqa
 

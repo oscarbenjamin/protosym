@@ -376,6 +376,12 @@ def test_simplecas_lambdify_llvm_mat() -> None:
     expected = np.array([[1, 2, 0], [4, 0, 6]], np.float64)
     assert np.all(f() == expected)
 
+    z = Symbol("z")
+    M = Matrix([[Add(x, y, z), Mul(x, y, z)]])
+    f = lambdify([x, y, z], M)
+    expected = np.array([[9, 24]], np.float64)
+    assert np.all(f(2, 3, 4) == expected)
+
     raises(LLVMNotImplementedError, lambda: lambdify([x], Matrix([[g(x)]])))
     raises(LLVMNotImplementedError, lambda: lambdify([], Matrix([[x]])))
 
