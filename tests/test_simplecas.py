@@ -6,13 +6,11 @@ from protosym.simplecas import Add
 from protosym.simplecas import cos
 from protosym.simplecas import Expr
 from protosym.simplecas import expressify
-from protosym.simplecas import ExpressifyError
 from protosym.simplecas import f
 from protosym.simplecas import g
 from protosym.simplecas import Integer
 from protosym.simplecas import lambdify
 from protosym.simplecas import List
-from protosym.simplecas import LLVMNotImplementedError
 from protosym.simplecas import Matrix
 from protosym.simplecas import Mul
 from protosym.simplecas import negone
@@ -23,6 +21,8 @@ from protosym.simplecas import Symbol
 from protosym.simplecas import x
 from protosym.simplecas import y
 from protosym.simplecas import zero
+from protosym.simplecas.exceptions import ExpressifyError
+from protosym.simplecas.exceptions import LLVMNotImplementedError
 
 
 two = Integer(2)
