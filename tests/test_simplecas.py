@@ -191,6 +191,20 @@ def test_simplecas_to_sympy() -> None:
     raises(NotImplementedError, lambda: Expr.from_sympy(sympy.ord0))
 
 
+def test_simplecas_to_sympy_matrix() -> None:
+    """Test converting to SymPy Matrix and back."""
+    try:
+        import sympy
+    except ImportError:
+        skip("SymPy not installed")
+
+    x_sym = sympy.Symbol("x")
+    sinx_sym = sympy.sin(x_sym)
+    cosx_sym = sympy.cos(x_sym)
+    M = sympy.Matrix([[sinx_sym, cosx_sym], [-cosx_sym, sinx_sym]])
+    assert M == Matrix.from_sympy(M).to_sympy()
+
+
 def test_simplecas_eval_f64() -> None:
     """Test basic float evaluation with eval_f64."""
     assert sin(cos(x)).eval_f64({x: 1.0}) == 0.5143952585235492

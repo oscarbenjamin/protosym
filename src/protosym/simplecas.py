@@ -507,6 +507,9 @@ def _get_eval_to_sympy() -> SymEvaluator[Expr, Any]:
     eval_to_sympy[a**b] = PyOp2(sympy.Pow)(a, b)
     eval_to_sympy[sin(a)] = PyOp1(sympy.sin)(a)
     eval_to_sympy[cos(a)] = PyOp1(sympy.cos)(a)
+    eval_to_sympy[List(star(a))] = PyOpN(
+        lambda args: sympy.Tuple(*args)  # type:ignore
+    )(a)
 
     # Store in the global to avoid recreating the Evaluator
     _eval_to_sympy = eval_to_sympy
@@ -524,23 +527,41 @@ def from_sympy(expr: Any) -> Expr:
     """Convert a SymPy expression to ``Expr``."""
     import sympy
 
-    if expr.is_Integer:
-        return Integer(expr.p)
-    elif expr.is_Symbol:
-        return Symbol(expr.name)
+    return _from_sympy_cache(expr, sympy, {})
+
+
+def _from_sympy_cache(expr: Any, sympy: Any, cache: dict[Any, Expr]) -> Expr:
+    ret = cache.get(expr)
+    if ret is not None:
+        return ret
     elif expr.args:
-        args = [from_sympy(arg) for arg in expr.args]
-        if expr.is_Add:
-            return Add(*args)
-        elif expr.is_Mul:
-            return Mul(*args)
-        elif expr.is_Pow:
-            return Pow(*args)
-        elif isinstance(expr, sympy.sin):
-            return sin(*args)
-        elif isinstance(expr, sympy.cos):
-            return cos(*args)
-    raise NotImplementedError("Cannot convert " + type(expr).__name__)
+        ret = _from_sympy_cache_args(expr, sympy, cache)
+    elif expr.is_Integer:
+        ret = Integer(expr.p)
+    elif expr.is_Symbol:
+        ret = Symbol(expr.name)
+    else:
+        raise NotImplementedError("Cannot convert " + type(expr).__name__)
+    cache[expr] = ret
+    return ret
+
+
+def _from_sympy_cache_args(expr: Any, sympy: Any, cache: dict[Any, Expr]) -> Expr:
+    args = [_from_sympy_cache(arg, sympy, cache) for arg in expr.args]
+    if expr.is_Add:
+        return Add(*args)
+    elif expr.is_Mul:
+        return Mul(*args)
+    elif expr.is_Pow:
+        return Pow(*args)
+    elif isinstance(expr, sympy.sin):
+        return sin(*args)
+    elif isinstance(expr, sympy.cos):
+        return cos(*args)
+    elif isinstance(expr, sympy.Tuple):
+        return List(*args)
+    else:
+        raise NotImplementedError("Cannot convert " + type(expr).__name__)
 
 
 Integer = Expr.new_atom("Integer", int)
@@ -832,6 +853,30 @@ class Matrix:
         for (i, j), n in self.entrymap.items():
             entries[i][j] = self.elements[n]
         return entries
+
+    def to_sympy(self) -> Any:
+        """Convert a simplecas Matrix to a SymPy Matrix."""
+        import sympy
+
+        elements_sympy = to_sympy(self.elements_graph).args
+        mat_sympy = sympy.zeros(self.nrows, self.ncols)
+        for (i, j), n in self.entrymap.items():
+            mat_sympy[i, j] = elements_sympy[n]
+        return mat_sympy
+
+    @classmethod
+    def from_sympy(cls, mat: Any) -> Matrix:
+        """Convert a SymPy Matrix to a simplecas Matrix."""
+        import sympy
+
+        dok = mat.todok()
+        elements_sympy = []
+        entrymap = {}
+        for n, (key, sympy_expr) in enumerate(dok.items()):
+            entrymap[key] = n
+            elements_sympy.append(sympy_expr)
+        elements = list(from_sympy(sympy.Tuple(*elements_sympy)).args)
+        return cls._new(mat.rows, mat.cols, elements, entrymap)
 
     def __repr__(self) -> str:
         """Convert to pretty representation."""
