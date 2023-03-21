@@ -8,7 +8,10 @@ from __future__ import annotations
 from typing import Any
 
 import sympy
+from sympy.core.function import AppliedUndef
 
+from protosym.core.sym import HeadOp
+from protosym.core.sym import HeadRule
 from protosym.core.sym import PyFunc1
 from protosym.core.sym import PyOp1
 from protosym.core.sym import PyOp2
@@ -40,6 +43,9 @@ sympy_pow = PyOp2[sympy.Basic](sympy.Pow)
 sympy_sin = PyOp1[sympy.Basic](sympy.sin)  # pyright: ignore
 sympy_cos = PyOp1[sympy.Basic](sympy.cos)  # pyright: ignore
 sympy_tuple = PyOpN[sympy.Basic](lambda a: sympy.Tuple(*a))  # pyright: ignore
+sympy_undef_call = HeadOp[sympy.Basic](
+    lambda a, b: sympy.Function(str(a))(*b)
+)  # pyright: ignore
 
 eval_to_sympy[Integer[a]] = sympy_integer(a)
 eval_to_sympy[Symbol[a]] = sympy_symbol(a)
@@ -50,6 +56,7 @@ eval_to_sympy[a**b] = sympy_pow(a, b)
 eval_to_sympy[sin(a)] = sympy_sin(a)
 eval_to_sympy[cos(a)] = sympy_cos(a)
 eval_to_sympy[List(star(a))] = sympy_tuple(a)
+eval_to_sympy[HeadRule(a, b)] = sympy_undef_call(a, b)
 
 
 def to_sympy(expr: Expr) -> Any:
@@ -113,5 +120,7 @@ def _from_sympy_cache_args(expr: Any, sympy: Any, cache: dict[Any, Expr]) -> Exp
         return cos(*args)
     elif isinstance(expr, sympy.Tuple):
         return List(*args)
+    elif isinstance(expr, AppliedUndef):
+        return Function(expr.name)(*args)  # pyright: ignore
     else:
         raise NotImplementedError("Cannot convert " + type(expr).__name__)

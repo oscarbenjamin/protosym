@@ -102,7 +102,10 @@ module = [
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "sympy"
+module = [
+    "sympy",
+    "sympy.core.function",
+]
 follow_imports = "skip"
 ignore_missing_imports = true
 
