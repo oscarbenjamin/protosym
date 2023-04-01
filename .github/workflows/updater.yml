@@ -17,10 +17,17 @@ jobs:
           pip install pip-upgrader poetry-plugin-up
           pip-upgrade -p all --skip-package-installation docs/requirements.txt
           pip-upgrade -p all --skip-package-installation .github/workflows/constraints.txt
-          poetry up --no-install
+          poetry up --no-install --latest
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v4
         with:
+            #
+            # This secret should be a classic personal access token from the
+            # oscarbenjamin-bot account with repo and workflow scope. A fine
+            # grained token does not appear to work.
+            #
+            # https://github.com/peter-evans/create-pull-request/issues/1791
+            #
             token: ${{ secrets.OSCARBENJAMIN_BOT_PROTOSYM_CLASSIC }}
             push-to-fork: oscarbenjamin-bot/protosym
             delete-branch: true
