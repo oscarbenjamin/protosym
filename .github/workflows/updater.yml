@@ -17,7 +17,7 @@ jobs:
           pip install pip-upgrader poetry-plugin-up
           pip-upgrade -p all --skip-package-installation docs/requirements.txt
           pip-upgrade -p all --skip-package-installation .github/workflows/constraints.txt
-          poetry up
+          poetry up --no-install
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v4
         with:
