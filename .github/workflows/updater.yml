@@ -19,7 +19,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v4
         with:
-            token: ${{ secrets.OSCARBENJAMIN_BOT_PROTOSYM_CLASSIC }}
+            token: ${{ secrets.OSCARBENJAMIN_BOT_PROTOSYM }}
             push-to-fork: oscarbenjamin-bot/protosym
             delete-branch: true
             commit-message: Update dependencies
