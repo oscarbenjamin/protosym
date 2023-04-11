@@ -329,6 +329,10 @@ def test_simplecas_Matrix_diff() -> None:
     """Test Matrix repr."""
     M = Matrix([[1, 2], [x, 0]])
     assert M.diff(x).tolist() == [[zero, zero], [one, zero]]
+
+    M = Matrix([[1, 2], [3, 4]])
+    assert M.diff(x).tolist() == [[zero, zero], [zero, zero]]
+
     raises(TypeError, lambda: M.diff([]))  # type:ignore
 
 
