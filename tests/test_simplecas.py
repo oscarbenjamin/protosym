@@ -152,12 +152,14 @@ def test_simplecas_to_sympy() -> None:
     x_sym = sympy.Symbol("x")
     sinx_sym = sympy.sin(x_sym)
     cosx_sym = sympy.cos(x_sym)
+    f_sym = sympy.Function("f")
 
     test_cases = [
         (sin(x), sinx_sym),
         (cos(x), cosx_sym),
         (cos(x) ** 2 + sin(x) ** 2, cosx_sym**2 + sinx_sym**2),
         (cos(x) * sin(x), cosx_sym * sinx_sym),
+        (f(x), f_sym(x_sym)),
     ]
     for expr, sympy_expr in test_cases:
         # XXX: Converting to SymPy and back does not in general round-trip
