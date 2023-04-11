@@ -4,10 +4,12 @@
 /.nox/
 /.python-version
 /.pytype/
+/.local/
 /dist/
 /docs/_build/
 /src/*.egg-info/
 __pycache__/
 *.swp
 .venv
+node_modules
 my

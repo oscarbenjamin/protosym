@@ -138,7 +138,7 @@ class Matrix:
         # Use the element_graph rather than differentiating each element
         # separately.
         elements_diff = _diff_forward(self.elements_graph.rep, sym.rep)
-        new_elements = list(Expr(elements_diff).args)
+        new_elements: list[Expr] = list(Expr(elements_diff).args)  # pyright: ignore
         return self._new(self.nrows, self.ncols, new_elements, self.entrymap)
 
     def to_llvm_ir(self, symargs: list[Expr]) -> str:

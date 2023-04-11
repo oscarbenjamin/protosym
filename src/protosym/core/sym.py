@@ -40,12 +40,10 @@ class SymAtomType(Generic[T_sym, T_val]):
     """Wrapper around AtomType to construct atoms as Sym."""
 
     name: str
-    sym: Callable[[TreeAtom[T_val]], T_sym]
+    sym: Type[T_sym]
     atom_type: AtomType[T_val]
 
-    def __init__(
-        self, name: str, sym: Callable[[TreeAtom[T_val]], T_sym], typ: Type[T_val]
-    ) -> None:
+    def __init__(self, name: str, sym: Type[T_sym], typ: Type[T_val]) -> None:
         """New SymAtomType."""
         self.name = name
         self.sym = sym
@@ -167,7 +165,7 @@ class Sym:
 
     @property
     def args(self: T_sym) -> tuple[T_sym, ...]:
-        """Args of the expression as a tuple of Sym."""
+        """Args of the expression as a tuple."""
         cls = type(self)
         return tuple(cls(child) for child in self.rep.children[1:])
 
