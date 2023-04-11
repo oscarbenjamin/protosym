@@ -29,21 +29,27 @@ from protosym.simplecas import sin
 from protosym.simplecas import Symbol
 
 
-eval_to_sympy = Expr.new_evaluator("to_sympy", object)
+eval_to_sympy = Expr.new_evaluator("to_sympy", sympy.Basic)
 
-eval_to_sympy[Integer[a]] = PyFunc1(sympy.Integer)(a)
-eval_to_sympy[Symbol[a]] = PyFunc1(sympy.Symbol)(a)
-eval_to_sympy[Function[a]] = PyFunc1(sympy.Function)(a)
-eval_to_sympy[Add(star(a))] = PyOpN[Any](lambda a: sympy.Add(*a))(a)
-eval_to_sympy[Mul(star(a))] = PyOpN[Any](lambda a: sympy.Mul(*a))(a)
-eval_to_sympy[a**b] = PyOp2(sympy.Pow)(a, b)
-eval_to_sympy[sin(a)] = PyOp1(sympy.sin)(a)
-eval_to_sympy[cos(a)] = PyOp1(sympy.cos)(a)
-eval_to_sympy[List(star(a))] = PyOpN(
-    lambda args: sympy.Tuple(*args)  # type:ignore
-)(
-    a
-)
+sympy_integer = PyFunc1[int, sympy.Basic](sympy.Integer)
+sympy_symbol = PyFunc1[str, sympy.Basic](sympy.Symbol)
+sympy_function = PyFunc1[str, sympy.Basic](sympy.Function)  # pyright: ignore
+sympy_add = PyOpN[sympy.Basic](lambda a: sympy.Add(*a))
+sympy_mul = PyOpN[sympy.Basic](lambda a: sympy.Mul(*a))
+sympy_pow = PyOp2[sympy.Basic](sympy.Pow)
+sympy_sin = PyOp1[sympy.Basic](sympy.sin)  # pyright: ignore
+sympy_cos = PyOp1[sympy.Basic](sympy.cos)  # pyright: ignore
+sympy_tuple = PyOpN[sympy.Basic](lambda a: sympy.Tuple(*a))  # pyright: ignore
+
+eval_to_sympy[Integer[a]] = sympy_integer(a)
+eval_to_sympy[Symbol[a]] = sympy_symbol(a)
+eval_to_sympy[Function[a]] = sympy_function(a)
+eval_to_sympy[Add(star(a))] = sympy_add(a)
+eval_to_sympy[Mul(star(a))] = sympy_mul(a)
+eval_to_sympy[a**b] = sympy_pow(a, b)
+eval_to_sympy[sin(a)] = sympy_sin(a)
+eval_to_sympy[cos(a)] = sympy_cos(a)
+eval_to_sympy[List(star(a))] = sympy_tuple(a)
 
 
 def to_sympy(expr: Expr) -> Any:
@@ -60,12 +66,12 @@ def to_sympy_matrix(mat: Matrix) -> Any:
     return mat_sympy
 
 
-def from_sympy(expr: Any) -> Expr:
+def from_sympy(expr: sympy.Basic) -> Expr:
     """Convert a SymPy expression to ``Expr``."""
-    return _from_sympy_cache(expr, sympy, {})
+    return _from_sympy_cache(expr, {})
 
 
-def from_sympy_matrix(mat: Any) -> Matrix:
+def from_sympy_matrix(mat: sympy.Matrix) -> Matrix:
     """Convert a SymPy Matrix to a simplecas Matrix."""
     dok = mat.todok()
     elements_sympy = []
@@ -77,16 +83,16 @@ def from_sympy_matrix(mat: Any) -> Matrix:
     return Matrix._new(mat.rows, mat.cols, elements, entrymap)
 
 
-def _from_sympy_cache(expr: Any, sympy: Any, cache: dict[Any, Expr]) -> Expr:
+def _from_sympy_cache(expr: sympy.Basic, cache: dict[sympy.Basic, Expr]) -> Expr:
     ret = cache.get(expr)
     if ret is not None:
         return ret
     elif expr.args:
         ret = _from_sympy_cache_args(expr, sympy, cache)
-    elif expr.is_Integer:
-        ret = Integer(expr.p)
-    elif expr.is_Symbol:
-        ret = Symbol(expr.name)
+    elif isinstance(expr, sympy.Integer):
+        ret = Integer(expr.p)  # pyright: ignore
+    elif isinstance(expr, sympy.Symbol):
+        ret = Symbol(expr.name)  # pyright: ignore
     else:
         raise NotImplementedError("Cannot convert " + type(expr).__name__)
     cache[expr] = ret
@@ -94,7 +100,7 @@ def _from_sympy_cache(expr: Any, sympy: Any, cache: dict[Any, Expr]) -> Expr:
 
 
 def _from_sympy_cache_args(expr: Any, sympy: Any, cache: dict[Any, Expr]) -> Expr:
-    args = [_from_sympy_cache(arg, sympy, cache) for arg in expr.args]
+    args = [_from_sympy_cache(arg, cache) for arg in expr.args]
     if expr.is_Add:
         return Add(*args)
     elif expr.is_Mul:
