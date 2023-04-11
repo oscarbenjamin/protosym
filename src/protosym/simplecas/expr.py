@@ -585,15 +585,16 @@ def _diff_forward(expression: TreeExpr, sym: TreeExpr) -> TreeExpr:
         args = [stack[i] for i in indices]
         diff_args = [diff_stack[i] for i in indices]
         expr = func(*args)
+        diff_terms: list[TreeExpr]
 
-        if set(diff_args) == {zero.rep}:
+        if func == List.rep:
+            diff_terms = [List.rep(*diff_args)]
+        elif set(diff_args) == {zero.rep}:
             diff_terms = []
         elif func == Add.rep:
             diff_terms = [da for da in diff_args if da != zero.rep]
         elif func == Mul.rep:
             diff_terms = _prod_rule_forward(args, diff_args)
-        elif func == List.rep:
-            diff_terms = [List.rep(*diff_args)]
         else:
             diff_terms = _chain_rule_forward(func, args, diff_args)
 
