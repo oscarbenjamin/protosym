@@ -8,7 +8,6 @@ from typing import Callable
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 from protosym.core.tree import forward_graph
-from protosym.core.tree import TreeAtom
 from protosym.simplecas.exceptions import LLVMNotImplementedError
 from protosym.simplecas.expr import Add
 from protosym.simplecas.expr import bin_expand
@@ -22,7 +21,7 @@ from protosym.simplecas.matrix import Matrix
 
 
 if _TYPE_CHECKING:
-    from protosym.core.tree import TreeExpr
+    from protosym.core.tree import Tree
 
 
 def _double_to_hex(f: float) -> str:
@@ -41,7 +40,7 @@ declare double    @llvm.cos.f64(double %Val)
 """
 
 
-def _to_llvm_f64(symargs: list[TreeExpr], expression: TreeExpr) -> str:
+def _to_llvm_f64(symargs: list[Tree], expression: Tree) -> str:
     """Code for LLVM IR function computing ``expression`` from ``symargs``."""
     expression = bin_expand(expression)
 
@@ -53,8 +52,8 @@ def _to_llvm_f64(symargs: list[TreeExpr], expression: TreeExpr) -> str:
     for a in graph.atoms:
         if a in symargs:
             identifiers.append(argnames[a])
-        elif isinstance(a, TreeAtom) and a.value.atom_type == Integer.atom_type:
-            identifiers.append(_double_to_hex(a.value.value))
+        elif a.value is not None and a.value.atom_type == Integer.atom_type:
+            identifiers.append(_double_to_hex(a.value.value))  # type: ignore
         else:
             raise LLVMNotImplementedError("No LLVM rule for: " + repr(a))
 
@@ -143,7 +142,7 @@ def _compile_llvm(module_code: str) -> Any:
     return fptr
 
 
-def _lambdify_llvm(args: list[TreeExpr], expression: TreeExpr) -> Callable[..., float]:
+def _lambdify_llvm(args: list[Tree], expression: Tree) -> Callable[..., float]:
     """Lambdify using llvmlite."""
     module_code = _to_llvm_f64(args, expression)
 
@@ -156,7 +155,7 @@ def _lambdify_llvm(args: list[TreeExpr], expression: TreeExpr) -> Callable[..., 
     return cfunc
 
 
-def _to_llvm_f64_matrix(symargs: list[TreeExpr], mat: Matrix) -> str:  # noqa [C901]
+def _to_llvm_f64_matrix(symargs: list[Tree], mat: Matrix) -> str:  # noqa [C901]
     """Code for LLVM IR function computing ``expression`` from ``symargs``."""
     elements_graph = bin_expand(mat.elements_graph.rep)
 
@@ -168,8 +167,8 @@ def _to_llvm_f64_matrix(symargs: list[TreeExpr], mat: Matrix) -> str:  # noqa [C
     for a in graph.atoms:
         if a in symargs:
             identifiers.append(argnames[a])
-        elif isinstance(a, TreeAtom) and a.value.atom_type == Integer.atom_type:
-            identifiers.append(_double_to_hex(a.value.value))
+        elif a.value is not None and a.value.atom_type == Integer.atom_type:
+            identifiers.append(_double_to_hex(a.value.value))  # type: ignore
         else:
             raise LLVMNotImplementedError("No LLVM rule for: " + repr(a))
 
@@ -224,7 +223,7 @@ def _to_llvm_f64_matrix(symargs: list[TreeExpr], mat: Matrix) -> str:  # noqa [C
     return module_code
 
 
-def _lambdify_llvm_matrix(args: list[TreeExpr], mat: Matrix) -> Callable[..., Any]:
+def _lambdify_llvm_matrix(args: list[Tree], mat: Matrix) -> Callable[..., Any]:
     """Lambdify a matrix.
 
     >>> from protosym.simplecas import lambdify, Matrix

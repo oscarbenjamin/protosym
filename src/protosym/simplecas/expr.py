@@ -21,7 +21,7 @@ from protosym.simplecas.exceptions import ExpressifyError
 
 
 if _TYPE_CHECKING:
-    from protosym.core.tree import TreeExpr
+    from protosym.core.tree import Tree
 
     Expressifiable = Union["Expr", int]
     ExprBinOp = Callable[["Expr", "Expr"], "Expr"]
@@ -42,7 +42,7 @@ def expressify(obj: Any) -> Expr:
     :func:`expressify`:
 
     >>> one.rep
-    TreeAtom(Integer(1))
+    Tr(Integer(1))
 
     It is harmless to call :func:`expressify` more than once because it will
     just return the same object.
@@ -129,7 +129,8 @@ class Expr(Sym):
     >>> (x + (x + x))
     (x + (x + x))
 
-    An :class:`Expr` directly displays its internal form which can be surprising e.g.:
+    An :class:`Expr` directly displays its internal form which can be
+    surprising e.g.:
 
     >>> x - y
     (x + (-1*y))
@@ -384,8 +385,8 @@ class Expr(Sym):
         What we can see is the for this (very extreme) class of expressions as
         we increase ``n`` the size of the graph representation grows *linearly*
         as :math:`2n + 2` whereas the size of the tree representation grows
-        *exponentially* as :math:`2^{n+2} - 3`. For this class of expressions the
-        graph representation will be much more efficient than the tree
+        *exponentially* as :math:`2^{n+2} - 3`. For this class of expressions
+        the graph representation will be much more efficient than the tree
         representation both in terms of memory and also computing time.
 
         See Also
@@ -532,18 +533,16 @@ count_ops_tree[HeadRule(a, b)] = sum_plus_one(a, b)
 #
 
 
-derivatives: dict[tuple[TreeExpr, int], Callable[..., TreeExpr]] = {
+derivatives: dict[tuple[Tree, int], Callable[..., Tree]] = {
     (sin.rep, 0): cos.rep,
     (cos.rep, 0): lambda e: Mul.rep(negone.rep, sin.rep(e)),
     (Pow.rep, 0): lambda b, e: Mul.rep(e, Pow.rep(b, Add.rep(e, negone.rep))),
 }
 
 
-def _prod_rule_forward(
-    args: list[TreeExpr], diff_args: list[TreeExpr]
-) -> list[TreeExpr]:
+def _prod_rule_forward(args: list[Tree], diff_args: list[Tree]) -> list[Tree]:
     """Product rule in forward accumulation."""
-    terms: list[TreeExpr] = []
+    terms: list[Tree] = []
     for n, diff_arg in enumerate(diff_args):
         if diff_arg != zero.rep:
             term = Mul.rep(*args[:n], diff_arg, *args[n + 1 :])
@@ -552,10 +551,10 @@ def _prod_rule_forward(
 
 
 def _chain_rule_forward(
-    func: TreeExpr, args: list[TreeExpr], diff_args: list[TreeExpr]
-) -> list[TreeExpr]:
+    func: Tree, args: list[Tree], diff_args: list[Tree]
+) -> list[Tree]:
     """Chain rule in forward accumulation."""
-    terms: list[TreeExpr] = []
+    terms: list[Tree] = []
     for n, diff_arg in enumerate(diff_args):
         if diff_arg != zero.rep:
             pdiff = derivatives[(func, n)]
@@ -566,7 +565,7 @@ def _chain_rule_forward(
     return terms
 
 
-def _diff_forward(expression: TreeExpr, sym: TreeExpr) -> TreeExpr:
+def _diff_forward(expression: Tree, sym: Tree) -> Tree:
     """Derivative of expression wrt sym.
 
     Uses forward accumulation algorithm.
@@ -585,7 +584,7 @@ def _diff_forward(expression: TreeExpr, sym: TreeExpr) -> TreeExpr:
         args = [stack[i] for i in indices]
         diff_args = [diff_stack[i] for i in indices]
         expr = func(*args)
-        diff_terms: list[TreeExpr]
+        diff_terms: list[Tree]
 
         if func == List.rep:
             diff_terms = [List.rep(*diff_args)]

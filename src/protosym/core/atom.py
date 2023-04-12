@@ -21,7 +21,7 @@ __all__ = [
 
 
 AnyValue = _Hashable
-_T = _TypeVar("_T", bound=AnyValue)
+_T = _TypeVar("_T", bound=AnyValue, covariant=True)
 
 #
 # The global store of Atoms. This maps from AtomTypes and values to Atoms.
@@ -66,8 +66,7 @@ class AtomType(_Generic[_T]):
     ========
 
     Atom: The actual instances of atomic expressions.
-    protosym.core.tree.TreeAtom: The :class:`TreeExpr` representation of atomic
-        expressions.
+    protosym.core.tree.Tree: Type that often wraps an :class:`Atom`.
     """
 
     __slots__ = (
@@ -92,7 +91,7 @@ class AtomType(_Generic[_T]):
         """Name of the Atom as a string."""
         return self.name
 
-    def __call__(self, value: _T) -> Atom[_T]:
+    def __call__(self, value: _T) -> Atom[_T]:  # type: ignore
         """Create an Atom of this type."""
         return Atom(self, value)
 
@@ -108,9 +107,9 @@ class Atom(_Generic[_T]):
     do hold an internal value but it is not considered to be a child in the
     sense of the ``children`` that other nodes of the expression graph have.
 
-    Every :class:`Atom` has both an :class:`AtomType` and an internal ``value``. An
-    :class:`Atom` is not intended to be constructed directly but rather is created
-    by calling an :class:`AtomType`.
+    Every :class:`Atom` has both an :class:`AtomType` and an internal
+    ``value``. An :class:`Atom` is not intended to be constructed directly but
+    rather is created by calling an :class:`AtomType`.
 
     >>> from protosym.core.atom import AtomType, Atom
     >>> Integer = AtomType('Integer', int)
@@ -130,14 +129,14 @@ class Atom(_Generic[_T]):
     >>> type(one.value)
     <class 'int'>
 
-    We can rebuild the :class:`Atom` from its ``atom_type`` and ``value``. This is
-    useful if we want to make an atom with a modified ``value``. Giving exactly
-    the same ``value`` will return precisely the same object because there can
-    only be a unique copy of an atom with any given ``atom_type`` and
-    ``value``. A global store is used to ensure that creating a new :class:`Atom` of
-    the same :class:`AtomType` and ``value`` will always return the same object.
-    For this to work the value used to construct an :class:`Atom` is required to be
-    hashable.
+    We can rebuild the :class:`Atom` from its ``atom_type`` and ``value``. This
+    is useful if we want to make an atom with a modified ``value``. Giving
+    exactly the same ``value`` will return precisely the same object because
+    there can only be a unique copy of an atom with any given ``atom_type`` and
+    ``value``. A global store is used to ensure that creating a new
+    :class:`Atom` of the same :class:`AtomType` and ``value`` will always
+    return the same object. For this to work the value used to construct an
+    :class:`Atom` is required to be hashable.
 
     >>> one == one.atom_type(one.value)
     True
@@ -146,16 +145,15 @@ class Atom(_Generic[_T]):
     >>> Integer(2) is Integer(2)
     True
 
-    Apart from holding a reference to the :class:`AtomType` and also the internal
-    value the only property that an :class:`Atom` has is that it can be compared to
-    other objects with `==` and is itself hashable.
+    Apart from holding a reference to the :class:`AtomType` and also the
+    internal value the only property that an :class:`Atom` has is that it can
+    be compared to other objects with `==` and is itself hashable.
 
     See Also
     ========
 
     AtomType: The class of types of :class:`Atom`.
-    protosym.core.tree.TreeAtom: The higher-level :class:`TreeExpr`
-        representation of an :class:`Atom`.
+    protosym.core.tree.Tree: Type that often wraps an :class:`Atom`.
     """
 
     __slots__ = (
