@@ -208,7 +208,7 @@ def topological_sort(
 
     Create some functions and symbols and use them to make an expression:
 
-    >>> from protosym.core.tree import funcs_symbols
+    >>> from protosym.core.tree import funcs_symbols, topological_sort
     >>> [f], [x, y] = funcs_symbols(['f'], ['x', 'y'])
     >>> expr = f(f(x, y), f(f(x)))
     >>> print(expr)
