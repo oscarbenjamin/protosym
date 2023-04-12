@@ -197,3 +197,12 @@ class Atom(_Generic[_T]):
 
 if _TYPE_CHECKING:
     AnyAtom = Atom[_Hashable]
+
+
+try:
+    import rust_protosym
+except ImportError:
+    rust_protosym = None
+
+if rust_protosym is not None:  # pragma: no cover
+    from rust_protosym import AtomType, Atom  # type: ignore # noqa

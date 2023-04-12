@@ -525,3 +525,19 @@ class SubsFunc:
             stack.append(Tree(*children))
 
         return stack[-1]
+
+
+try:
+    import rust_protosym
+except ImportError:
+    rust_protosym = None
+
+if rust_protosym is not None:  # pragma: no cover
+    from rust_protosym import (  # type:ignore # noqa
+        Tree,
+        Tr,
+        ForwardGraph,
+        topological_sort,
+        topological_split,
+        forward_graph,
+    )
