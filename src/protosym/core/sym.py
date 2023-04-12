@@ -467,7 +467,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
     >>> import math
     >>> from protosym.core.sym import Sym, PyOp1, PyFunc1
     >>> Integer = Sym.new_atom('Integer', int)
-    >>> Function = Sym.new_atom('Function', int)
+    >>> Function = Sym.new_atom('Function', str)
     >>> cos = Function('cos').rep
     >>> a = Sym.new_wild('a')
     >>> ar = a.rep
