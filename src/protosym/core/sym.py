@@ -22,10 +22,12 @@ from weakref import WeakValueDictionary as _WeakDict
 from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator
 from protosym.core.exceptions import BadRuleError
-from protosym.core.tree import TreeAtom
-from protosym.core.tree import TreeExpr
+from protosym.core.tree import Tr
+from protosym.core.tree import Tree
+
 
 __all__ = ["Sym", "SymAtomType", "SymEvaluator"]
+
 
 T_sym = TypeVar("T_sym", bound="Sym")
 T_val = TypeVar("T_val")
@@ -56,7 +58,7 @@ class SymAtomType(Generic[T_sym, T_val]):
     def __call__(self, value: T_val) -> T_sym:
         """Create a new Atom as a Sym."""
         atom = self.atom_type(value)
-        return self.sym(TreeAtom[T_val](atom))
+        return self.sym(Tr(atom))
 
     def __getitem__(self, wild: T_sym) -> SymAtomValue[T_sym, T_val]:
         """Represent extracting the value from self."""
@@ -82,7 +84,7 @@ class Sym:
     The :class:`Sym` class should be subclassed to add any desired methods such
     as `__add__`. The :class:`Sym` class defines object construction to ensure
     that all instances of :class:`Sym` for any given subclass and underlying
-    :class:`TreeExpr` are unique. Each :class:`Sym` instance holds an internal
+    :class:`Tree` are unique. Each :class:`Sym` instance holds an internal
     `rep` attribute to which all methods are delegated.
 
     >>> class Expr(Sym):
@@ -96,14 +98,14 @@ class Sym:
     ...
 
     Now we can define some atom types and instances. These are wrappers around
-    :class:`AtomType` and :class:`TreeAtom`:
+    :class:`AtomType` and :class:`Tree`:
 
     >>> Integer = Expr.new_atom('Integer', int)
     >>> Integer
     Integer
     >>> one = Integer(1)
     >>> one
-    Sym(TreeAtom(Integer(1)))
+    Sym(Tr(Integer(1)))
     >>> print(one)
     1
 
@@ -120,9 +122,9 @@ class Sym:
     The `repr` shows the raw representation of these objects:
 
     >>> Add
-    Sym(TreeAtom(Function('Add')))
+    Sym(Tr(Function('Add')))
     >>> expr
-    Sym(TreeNode(TreeAtom(Function('Add')), TreeAtom(Integer(1)), TreeAtom(Integer(1))))
+    Sym(Tree(Tr(Function('Add')), Tr(Integer(1)), Tr(Integer(1))))
 
     Subclasses should probably implement prettier printing.
 
@@ -134,16 +136,16 @@ class Sym:
 
     _all_expressions: _WeakDict[Any, Any] = _WeakDict()
 
-    rep: TreeExpr
+    rep: Tree
 
-    def __new__(cls, tree_expr: TreeExpr) -> Sym:
+    def __new__(cls, tree_expr: Tree) -> Sym:
         """Create a new Sym wrapping `tree_expr`.
 
         If an equivalent Sym instance already exists then the same object will
         be returned.
         """
-        if not isinstance(tree_expr, TreeExpr):
-            raise TypeError("First argument to Sym should be TreeExpr")
+        if not isinstance(tree_expr, Tree):
+            raise TypeError("First argument to Sym should be Tree")
 
         key = (cls, tree_expr)
 
@@ -175,7 +177,7 @@ class Sym:
         >>> from protosym.core.sym import Sym
         >>> Integer = Sym.new_atom('Integer', int)
         >>> Integer(1)
-        Sym(TreeAtom(Integer(1)))
+        Sym(Tr(Integer(1)))
         """
         return f"Sym({self.rep!r})"
 
@@ -199,7 +201,7 @@ class Sym:
         >>> Integer = Sym.new_atom('Integer', int)
         >>> one = Integer(1)
         >>> one
-        Sym(TreeAtom(Integer(1)))
+        Sym(Tr(Integer(1)))
         """
         return SymAtomType(name, cls, typ)
 
@@ -212,9 +214,9 @@ class Sym:
         >>> print(a)
         a
         >>> a
-        Sym(TreeAtom(Wild('a')))
+        Sym(Tr(Wild('a')))
         """
-        return cls(TreeAtom(Wild(name)))
+        return cls(Tr(Wild(name)))
 
     @classmethod
     def new_evaluator(
@@ -388,13 +390,13 @@ class HeadOp(Generic[T_val], PyFunc):
 
     __slots__ = ("func",)
 
-    # XXX: Ideally this function would not operate on TreeExpr because it means
-    # that the function wrapped by HeadOp needs to know how about TreeExpr
-    # which mixes up the levels we want to work with. Not sure yet what is the
-    # best way to handle this. Currently where HeadOp is used the TreeExpr
-    # argument is either ignored or just converted to a string.
+    # XXX: Ideally this function would not operate on Tree because it means
+    # that the function wrapped by HeadOp needs to know how about Tree which
+    # mixes up the levels we want to work with. Not sure yet what is the best
+    # way to handle this. Currently where HeadOp is used the Tree argument is
+    # either ignored or just converted to a string.
 
-    def __init__(self, func: Callable[[TreeExpr, Sequence[T_val]], T_val]):
+    def __init__(self, func: Callable[[Tree, Sequence[T_val]], T_val]):
         self.func = func
 
     def __call__(self: T_op, head: T_sym, args: T_sym) -> WildCall[T_sym, T_op]:
@@ -441,7 +443,7 @@ AtomRule = _AtomRuleType()
 HeadRule = _HeadRuleType()
 
 
-Star = TreeAtom(AtomType("Star", str)("Star"))
+Star = Tr(AtomType("Star", str)("Star"))
 
 
 def star(wild: T_sym) -> T_sym:

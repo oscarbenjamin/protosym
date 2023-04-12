@@ -9,8 +9,7 @@ from typing import TypeVar
 
 from protosym.core.exceptions import NoEvaluationRuleError
 from protosym.core.tree import forward_graph
-from protosym.core.tree import TreeAtom
-from protosym.core.tree import TreeExpr
+from protosym.core.tree import Tree
 
 
 if _TYPE_CHECKING:
@@ -33,13 +32,13 @@ if _TYPE_CHECKING:
     OpN = Callable[[Sequence[_T]], _T]
 
 
-def _generic_operation_error(head: TreeExpr, argvals: Sequence[_T]) -> _T:
+def _generic_operation_error(head: Tree, argvals: Sequence[_T]) -> _T:
     """Error fallback rule for handling unknown heads."""
     msg = "No rule for head: " + repr(head)
     raise NoEvaluationRuleError(msg)
 
 
-def _generic_atom_error(value: TreeAtom[_S]) -> Any:
+def _generic_atom_error(value: Tree) -> Any:
     """Error fallback rule for handling unknown atoms."""
     msg = "No rule for atom: " + repr(value)
     raise NoEvaluationRuleError(msg)
@@ -55,15 +54,15 @@ class Evaluator(Generic[_T]):
 
     >>> import math
     >>> from protosym.core.atom import AtomType
-    >>> from protosym.core.tree import TreeAtom
+    >>> from protosym.core.tree import Tr
     >>> from protosym.core.evaluate import Evaluator
     >>> Integer = AtomType('Integer', int)
     >>> Symbol = AtomType('Symbol', str)
     >>> Function = AtomType('Function', str)
-    >>> sin = TreeAtom(Function('sin'))
-    >>> cos = TreeAtom(Function('cos'))
-    >>> x = TreeAtom(Symbol('x'))
-    >>> one = TreeAtom(Integer(1))
+    >>> sin = Tr(Function('sin'))
+    >>> cos = Tr(Function('cos'))
+    >>> x = Tr(Symbol('x'))
+    >>> one = Tr(Integer(1))
 
     Now we can make an :class:`Evaluator` to evaluate this kind of expression:
 
@@ -90,9 +89,9 @@ class Evaluator(Generic[_T]):
     """
 
     atoms: dict[AtomType[_AnyValue], Callable[[_AnyValue], _T]]
-    operations: dict[TreeExpr, tuple[Callable[..., _T], bool]]
-    generic_operation_func: Callable[[TreeExpr, Sequence[_T]], _T]
-    generic_atom_func: Callable[[TreeAtom[_S]], _T]
+    operations: dict[Tree, tuple[Callable[..., _T], bool]]
+    generic_operation_func: Callable[[Tree, Sequence[_T]], _T]
+    generic_atom_func: Callable[[Tree], _T]
 
     def __init__(self) -> None:
         """Create an empty evaluator."""
@@ -111,31 +110,31 @@ class Evaluator(Generic[_T]):
         """Add a generic fallback rule for atoms."""
         self.generic_atom_func = func
 
-    def add_op1(self, head: TreeExpr, func: Op1[_T]) -> None:
+    def add_op1(self, head: Tree, func: Op1[_T]) -> None:
         """Add an evaluation rule for a particular head."""
         self.operations[head] = (func, True)
 
-    def add_op2(self, head: TreeExpr, func: Op2[_T]) -> None:
+    def add_op2(self, head: Tree, func: Op2[_T]) -> None:
         """Add an evaluation rule for a particular head."""
         self.operations[head] = (func, True)
 
-    def add_opn(self, head: TreeExpr, func: OpN[_T]) -> None:
+    def add_opn(self, head: Tree, func: OpN[_T]) -> None:
         """Add an evaluation rule for a particular head."""
         self.operations[head] = (func, False)
 
-    def add_op_generic(self, func: Callable[[TreeExpr, Sequence[_T]], _T]) -> None:
+    def add_op_generic(self, func: Callable[[Tree, Sequence[_T]], _T]) -> None:
         """Add a generic fallback rule for heads."""
         self.generic_operation_func = func
 
-    def eval_atom(self, atom: TreeAtom[_S]) -> _T:
+    def eval_atom(self, atom: Tree) -> _T:
         """Evaluate an atom."""
         atom_value = atom.value
-        atom_func = self.atoms.get(atom_value.atom_type)  # type:ignore
+        atom_func = self.atoms.get(atom_value.atom_type)
         if atom_func is None:
             return self.generic_atom_func(atom)
         return atom_func(atom_value.value)
 
-    def eval_operation(self, head: TreeExpr, argvals: Sequence[_T]) -> _T:
+    def eval_operation(self, head: Tree, argvals: Sequence[_T]) -> _T:
         """Evaluate one function with some values."""
         func_star = self.operations.get(head)
 
@@ -151,16 +150,16 @@ class Evaluator(Generic[_T]):
 
         return result
 
-    def evaluate(self, expr: TreeExpr, values: dict[TreeExpr, _T]) -> _T:
+    def evaluate(self, expr: Tree, values: dict[Tree, _T]) -> _T:
         """Evaluate the expression using the registered rules."""
         return self.eval_forward(expr, values)
 
-    def eval_recursive(self, expr: TreeExpr, values: dict[TreeExpr, _T]) -> _T:
+    def eval_recursive(self, expr: Tree, values: dict[Tree, _T]) -> _T:
         """Evaluate the expression using recursion."""
         if expr in values:
             # Use an explicit value if given
             return values[expr]
-        elif isinstance(expr, TreeAtom):
+        elif not expr.children:
             # Convert an Atom to _T
             return self.eval_atom(expr)
         else:
@@ -170,7 +169,7 @@ class Evaluator(Generic[_T]):
             argvals = [self.eval_recursive(c, values) for c in children]
             return self.eval_operation(head, argvals)
 
-    def eval_forward(self, expr: TreeExpr, values: dict[TreeExpr, _T]) -> _T:
+    def eval_forward(self, expr: Tree, values: dict[Tree, _T]) -> _T:
         """Evaluate the expression using forward evaluation."""
         # Convert expr to the forward graph representation
         graph = forward_graph(expr)
@@ -182,7 +181,7 @@ class Evaluator(Generic[_T]):
             if value_get is not None:
                 value = value_get
             else:
-                value = self.eval_atom(atom)  # type: ignore
+                value = self.eval_atom(atom)
             stack.append(value)
 
         # Run forward evaluation through the operations
@@ -194,24 +193,22 @@ class Evaluator(Generic[_T]):
         # is the value of expr.
         return stack[-1]
 
-    def __call__(
-        self, expr: TreeExpr, values: Optional[dict[TreeExpr, _T]] = None
-    ) -> _T:
+    def __call__(self, expr: Tree, values: Optional[dict[Tree, _T]] = None) -> _T:
         """Short-hand for evaluate."""
         if values is None:
             values = {}
         return self.evaluate(expr, values)
 
 
-class Transformer(Evaluator[TreeExpr]):
-    """Specialized Evaluator for TreeExpr -> TreeExpr operations.
+class Transformer(Evaluator[Tree]):
+    """Specialized Evaluator for Tree -> Tree operations.
 
     Whereas :class:`Evaluator` is used to evaluate an expression into a
     different type of object like ``float`` or ``str`` a :class:`Transformer`
-    is used to transform a :class:`TreeExpr` into a new :class:`TreeExpr`.
+    is used to transform a :class:`Tree` into a new :class:`Tree`.
 
     The difference between using ``Transformer`` and using
-    ``Evaluator[TreeExpr]`` is that ``Transformer`` allows processing
+    ``Evaluator[Tree]`` is that ``Transformer`` allows processing
     operations that have no associated rules leaving the expression unmodified.
 
     Examples
@@ -219,7 +216,7 @@ class Transformer(Evaluator[TreeExpr]):
 
     We first import the pieces and define some functions and symbols.
 
-    >>> from protosym.core.tree import funcs_symbols
+    >>> from protosym.core.tree import Tree, funcs_symbols
     >>> from protosym.core.evaluate import Evaluator, Transformer
     >>> [f, g], [x, y] = funcs_symbols(['f', 'g'], ['x', 'y'])
 
@@ -233,28 +230,26 @@ class Transformer(Evaluator[TreeExpr]):
     >>> print(f2g(expr))
     g(g(x, g(y)), y)
 
-    By contrast with ``Evaluator[TreeExpr]`` the above would fail because no
+    By contrast with ``Evaluator[Tree]`` the above would fail because no
     rule has been defined for the head ``g`` or for ``Symbol`` (the
     :class:`AtomType` of ``x`` and ``y``).
 
     >>> expr = f(g(x, f(y)), y)
-    >>> f2g_eval = Evaluator[TreeExpr]()
+    >>> f2g_eval = Evaluator[Tree]()
     >>> f2g_eval.add_opn(f, lambda args: g(*args))
     >>> f2g_eval(expr)  # doctest: +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
         ...
-    protosym.core.exceptions.NoEvaluationRuleError: No rule for atom:
-        TreeAtom(Symbol('x'))
+    protosym.core.exceptions.NoEvaluationRuleError: No rule for atom: Tr(Symbol('x'))
 
     We can add a fallback rule for symbols. Then it fails because it needs a
     rule for ``g``:
 
-    >>> f2g_eval.add_atom_generic(str)
+    >>> f2g_eval.add_atom_generic(lambda x: x)
     >>> f2g_eval(expr)  # doctest: +NORMALIZE_WHITESPACE
     Traceback (most recent call last):
         ...
-    protosym.core.exceptions.NoEvaluationRuleError: No rule for head:
-        TreeAtom(Function('g'))
+    protosym.core.exceptions.NoEvaluationRuleError: No rule for head: Tr(Function('g'))
 
     If we also add a rule for ``g`` then it should work:
 

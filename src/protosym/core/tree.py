@@ -5,56 +5,58 @@ This module defines classes for representing expressions in top-down tree form.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
-from typing import cast
-from typing import Generic as _Generic
-from typing import Hashable as _Hashable
 from typing import TYPE_CHECKING as _TYPE_CHECKING
-from typing import TypeVar as _TypeVar
 from weakref import WeakValueDictionary as _WeakDict
 
+from protosym.core.atom import Atom
 from protosym.core.atom import AtomType
 
 
-_T = _TypeVar("_T", bound=_Hashable)  # , covariant=True)
-
-
 if _TYPE_CHECKING:
-    from protosym.core.atom import Atom
+    from protosym.core.atom import AnyAtom
 
 
-_all_tree_atoms: _WeakDict[Any, Any] = _WeakDict()
-_all_tree_nodes: _WeakDict[Any, Any] = _WeakDict()
+__all__ = [
+    "Tree",
+    "Tr",
+    "ForwardGraph",
+    "topological_sort",
+    "topological_split",
+    "forward_graph",
+]
 
 
-class TreeExpr:
+_all_trees: _WeakDict[AnyAtom | tuple[Tree, ...], Tree] = _WeakDict()
+
+
+class Tree:
     """Base class for tree expressions.
 
-    Every :class:`TreeExpr` is actually either an instance of :class:`TreeAtom`
-    for atomic expressions or :class:`TreeNode` for compound expressions.
+    Every :class:`Tree` is either an atomic :class:`Tree` or a compound
+    :class:`Tree` having children that are themselves of type :class:`Tree`.
 
     >>> from protosym.core.atom import AtomType
-    >>> from protosym.core.tree import TreeAtom, TreeExpr, TreeNode
+    >>> from protosym.core.tree import Tr
     >>> Function = AtomType('Function', str)
     >>> Integer = AtomType('Integer', int)
-    >>> f = TreeAtom(Function('f'))
-    >>> one = TreeAtom(Integer(1))
+    >>> f = Tr(Function('f'))
+    >>> one = Tr(Integer(1))
     >>> f
-    TreeAtom(Function('f'))
+    Tr(Function('f'))
     >>> one
-    TreeAtom(Integer(1))
+    Tr(Integer(1))
     >>> expr = f(one)
     >>> expr
-    TreeNode(TreeAtom(Function('f')), TreeAtom(Integer(1)))
+    Tree(Tr(Function('f')), Tr(Integer(1)))
     >>> type(one)
-    <class 'protosym.core.tree.TreeAtom'>
+    <class 'protosym.core.tree.Tree'>
     >>> type(expr)
-    <class 'protosym.core.tree.TreeNode'>
-    >>> [isinstance(e, TreeExpr) for e in [f, one, f(one)]]
+    <class 'protosym.core.tree.Tree'>
+    >>> [isinstance(e, Tree) for e in [f, one, f(one)]]
     [True, True, True]
 
     The verbose ``repr`` output seen above is deliberate so that the difference
-    can clearly be seen between :class:`Atom`, :class:`TreeAtom` and higher
+    can clearly be seen between :class:`Atom`, :class:`Tree` and higher
     level expression types. Prettier output can be found with ``str`` or
     ``print``.
 
@@ -65,17 +67,17 @@ class TreeExpr:
     >>> print(f(one))
     f(1)
 
-    Compound expressions are represented as :class:`TreeNode` instances and
-    have a list of ``children`` that are themselves :class:`TreeExpr` whereas
-    :class:`TreeAtom` has no children and holds an internal ``value`` that is
-    of type :class:`Atom`.
+    Compound expressions are represented as :class:`Tree` instances and have a
+    list of ``children`` that are themselves :class:`Tree` whereas an atomic
+    :class:`Tree` has no children and holds an internal ``value`` that is of
+    type :class:`Atom`.
 
     >>> expr
-    TreeNode(TreeAtom(Function('f')), TreeAtom(Integer(1)))
+    Tree(Tr(Function('f')), Tr(Integer(1)))
     >>> expr.children
-    (TreeAtom(Function('f')), TreeAtom(Integer(1)))
+    (Tr(Function('f')), Tr(Integer(1)))
     >>> expr.children[0]
-    TreeAtom(Function('f'))
+    Tr(Function('f'))
     >>> expr.children[0].children
     ()
     >>> expr.children[0].value
@@ -83,159 +85,99 @@ class TreeExpr:
     >>> type(expr.children[0].value)
     <class 'protosym.core.atom.Atom'>
 
-    Every :class:`TreeExpr` is either constructed from an :class:`Atom` using
-    :class:`TreeAtom` or it is constructed as a compound expressions defined in
-    terms of preexisting :class:`TreeExpr`. There are two equivalent ways to
-    construct a :class:`TreeExpr`:
+    Every :class:`Tree` is either constructed from an :class:`Atom` using
+    :class:`Tree` or it is constructed as a compound expressions defined in
+    terms of preexisting :class:`Tree`. There are two equivalent ways to
+    construct a non-atomic :class:`Tree`:
 
-    >>> f(one) == TreeNode(f, one)
+    >>> f(one) == Tree(f, one)
     True
 
-    Every :class:`TreeExpr` is callable so this syntax can always be used even
-    if it does not seem to make sense:
+    Every :class:`Tree` is callable so this syntax can always be used even if
+    it does not seem to make sense:
 
     >>> print(one(f))
     1(f)
     >>> one(f)
-    TreeNode(TreeAtom(Integer(1)), TreeAtom(Function('f')))
-
-    See Also
-    ========
-
-    TreeAtom: subclass of :class:`TreeExpr` representing atomic trees.
-    TreeNode: subclass of :class:`TreeExpr` representing compound trees.
+    Tree(Tr(Integer(1)), Tr(Function('f')))
     """
 
     __slots__ = (
         "__weakref__",
+        "value",
         "children",
     )
 
-    children: tuple[TreeExpr, ...]
+    children: tuple[Tree, ...]
     """Docstring for children"""
 
-    def __call__(*expressions: TreeExpr) -> TreeNode:
-        """Compound expressions are made by calling TreeExpr instances."""
-        return TreeNode(*expressions)
+    value: AnyAtom
+    """Docstring for value"""
 
-
-class TreeAtom(TreeExpr, _Generic[_T]):
-    """Class for atomic tree expressions.
-
-    A :class:`TreeAtom` wraps an :class:`Atom` as its internal ``value``
-    attribute and then provides an empty :attr:`TreeExpr.children` attribute to
-    match the interface expected of :class:`TreeExpr`.
-
-    >>> from protosym.core.atom import AtomType
-    >>> from protosym.core.tree import TreeAtom
-    >>> Integer = AtomType('Integer', int)
-    >>> one = TreeAtom(Integer(1))
-    >>> one
-    TreeAtom(Integer(1))
-    >>> one.value
-    Integer(1)
-    >>> one.children
-    ()
-
-    See Also
-    ========
-
-    protosym.core.atom.Atom: Lower level representation of atomic expressions.
-    TreeExpr: superclass of :class:`TreeAtom` representing all tree-form
-        expressions.
-    TreeNode: alternate subclass of :class:`TreeExpr` representing compound
-        expressions.
-    """
-
-    __slots__ = ("value",)
-
-    value: Atom[_T]
-
-    def __new__(cls, value: Atom[_T]) -> TreeAtom[_T]:
-        """Return a prevously created TreeAtom or a new one."""
-        previous = _all_tree_atoms.get(value, None)
+    def __new__(cls, *children: Tree) -> Tree:
+        """Return a prevously created Tree or a new one."""
+        previous = _all_trees.get(children, None)
         if previous is not None:
-            return cast("TreeAtom[_T]", previous)
+            return previous
 
-        obj = object.__new__(cls)
-        obj.children = ()
-        obj.value = value
-
-        obj = cast("TreeAtom[_T]", _all_tree_atoms.setdefault(value, obj))
-
-        return obj
-
-    def __repr__(self) -> str:
-        """Show the verbose representaton."""
-        return f"TreeAtom({self.value!r})"
-
-    def __str__(self) -> str:
-        """Show the pretty form."""
-        return str(self.value)
-
-
-class TreeNode(TreeExpr):
-    """Class for compound tree expressions.
-
-    A :class:`TreeNode` represents a non-atomic :class:`TreeExpr` by holding a
-    tuple of child :class:`TreeExpr` objects. Before we can construct a
-    :class:`TreeNode` we first need to construct :class:`TreeAtom` expressions
-    to represent the children.
-
-    >>> from protosym.core.atom import AtomType
-    >>> from protosym.core.tree import TreeNode
-    >>> Integer = AtomType('Integer', int)
-    >>> Function = AtomType('Function', str)
-    >>> one = TreeAtom(Integer(1))
-    >>> cos = TreeAtom(Function('cos'))
-    >>> cos(one)
-    TreeNode(TreeAtom(Function('cos')), TreeAtom(Integer(1)))
-    >>> cos(cos(one))
-    TreeNode(TreeAtom(Function('cos')), TreeNode(TreeAtom(Function('cos')),\
- TreeAtom(Integer(1))))
-    >>> print(cos(cos(one)))
-    cos(cos(1))
-
-    See Also
-    ========
-
-    TreeExpr: superclass of :class:`TreeNode` representing all tree-form
-        expressions.
-    TreeAtom: alternate subclass of :class:`TreeExpr` representing atomic
-        expressions.
-    """
-
-    __slots__ = ()
-
-    def __new__(cls, *children: TreeExpr) -> TreeNode:
-        """Return a prevously created TreeAtom or a new one."""
-        previous = _all_tree_nodes.get(children, None)
-        if previous is not None:
-            return previous  # type:ignore
+        if not all(isinstance(child, Tree) for child in children):
+            raise TypeError("All arguments should be Tree.")
 
         obj = object.__new__(cls)
         obj.children = children
 
-        obj = _all_tree_nodes.setdefault(children, obj)
+        obj = _all_trees.setdefault(children, obj)
 
         return obj
 
+    @classmethod
+    def atom(cls, value: AnyAtom) -> Tree:
+        """Create a Tree representing an atomic expression."""
+        if not isinstance(value, Atom):
+            raise TypeError("The value should be an Atom.")
+
+        previous = _all_trees.get(value, None)
+        if previous is not None:
+            return previous
+
+        obj = super().__new__(cls)
+        obj.value = value
+        obj.children = ()
+
+        obj = _all_trees.setdefault(value, obj)
+
+        return obj
+
+    def __call__(*expressions: Tree) -> Tree:
+        """Compound expressions are made by calling Tree instances."""
+        return Tree(*expressions)
+
     def __repr__(self) -> str:
         """Show the verbose representaton."""
-        argstr = ", ".join(map(repr, self.children))
-        return f"TreeNode({argstr})"
+        if self.children:
+            argstr = ", ".join(map(repr, self.children))
+            return f"Tree({argstr})"
+        else:
+            return f"Tr({self.value!r})"
 
     def __str__(self) -> str:
         """Show the pretty form."""
-        head = self.children[0]
-        args = self.children[1:]
-        argstr = ", ".join(map(str, args))
-        return f"{head}({argstr})"
+        if self.children:
+            head = self.children[0]
+            args = self.children[1:]
+            argstr = ", ".join(map(str, args))
+            return f"{head}({argstr})"
+        else:
+            return str(self.value)
+
+
+# Convenient shorthand for creating atoms
+Tr = Tree.atom
 
 
 def funcs_symbols(
     function_names: list[str], symbol_names: list[str]
-) -> tuple[list[TreeAtom[str]], list[TreeAtom[str]]]:
+) -> tuple[list[Tree], list[Tree]]:
     """Convenience function to make some functions and symbols.
 
     >>> from protosym.core.tree import funcs_symbols
@@ -248,13 +190,13 @@ def funcs_symbols(
     """
     Function = AtomType("Function", str)  # noqa
     Symbol = AtomType("Symbol", str)  # noqa
-    functions = [TreeAtom(Function(name)) for name in function_names]
-    symbols = [TreeAtom(Symbol(name)) for name in symbol_names]
+    functions = [Tr(Function(name)) for name in function_names]
+    symbols = [Tr(Symbol(name)) for name in symbol_names]
     return functions, symbols
 
 
-def topological_sort(expression: TreeExpr, *, heads: bool = False) -> list[TreeExpr]:
-    """List of subexpressions of a :class:`TreeExpr` sorted topologically.
+def topological_sort(expression: Tree, *, heads: bool = False) -> list[Tree]:
+    """List of subexpressions of a :class:`Tree` sorted topologically.
 
     Create some functions and symbols and use them to make an expression:
 
@@ -288,21 +230,21 @@ def topological_sort(expression: TreeExpr, *, heads: bool = False) -> list[TreeE
     See Also
     ========
 
-    TreeExpr: The expression class that this function operates on.
+    Tree: The expression class that this function operates on.
     topological_split: Splits the sort into atoms, heads and nodes.
     """
     #
     # We use a stack here rather than recursion so that there is no limit on
     # the recursion depth. Otherwise though this is really just the same as
     # walking an expression tree recursively but using a set to avoid
-    # re-walking any repeating subexpressions. At the end though we get a
-    # structure that contains each subexpression exactly once with no
-    # repetition. That allows any calling routines to avoid needing to check or
-    # optimise for repeating subexpressions. This routine could be made more
-    # efficient but in usage it does not seem to be a major bottleneck compared
-    # to the ones processing its output.
+    # re-walking any repeating subexpressions. At the end we get a structure
+    # that contains each subexpression exactly once with no repetition. That
+    # allows any calling routines to avoid needing to check or optimise for
+    # repeating subexpressions. This routine could be made more efficient but
+    # in usage it does not seem to be a major bottleneck compared to the ones
+    # processing its output.
     #
-    def get_children(expr: TreeExpr) -> list[TreeExpr]:
+    def get_children(expr: Tree) -> list[Tree]:
         if heads:
             children = expr.children
         else:
@@ -329,8 +271,8 @@ def topological_sort(expression: TreeExpr, *, heads: bool = False) -> list[TreeE
 
 
 def topological_split(
-    expr: TreeExpr,
-) -> tuple[list[TreeExpr], set[TreeExpr], list[TreeExpr]]:
+    expr: Tree,
+) -> tuple[list[Tree], set[Tree], list[Tree]]:
     """Topological sort split into atoms, heads and compound expressions.
 
     First build an expression:
@@ -357,14 +299,14 @@ def topological_split(
     See Also
     ========
 
-    TreeExpr: The expression class that this operates on.
+    Tree: The expression class that this operates on.
     topological_sort: Topological sort as a list of all subexpressions.
     """
     subexpressions = topological_sort(expr)
 
-    atoms: list[TreeExpr] = []
-    heads: set[TreeExpr] = set()
-    nodes: list[TreeExpr] = []
+    atoms: list[Tree] = []
+    heads: set[Tree] = set()
+    nodes: list[Tree] = []
 
     for subexpr in subexpressions:
         children = subexpr.children
@@ -377,8 +319,8 @@ def topological_split(
     return atoms, heads, nodes
 
 
-def forward_graph(expr: TreeExpr) -> ForwardGraph:
-    """Build a ``ForwardGraph`` from a ``TreeExpr``.
+def forward_graph(expr: Tree) -> ForwardGraph:
+    """Build a ``ForwardGraph`` from a ``Tree``.
 
     >>> from protosym.core.tree import funcs_symbols
     >>> [f, g], [x, y] = funcs_symbols(['f', 'g'], ['x', 'y'])
@@ -426,8 +368,8 @@ def forward_graph(expr: TreeExpr) -> ForwardGraph:
 
     num_atoms = len(atoms)
 
-    operations: list[tuple[TreeExpr, list[int]]] = []
-    indices: dict[TreeExpr, int] = dict(zip(atoms, range(num_atoms)))
+    operations: list[tuple[Tree, list[int]]] = []
+    indices: dict[Tree, int] = dict(zip(atoms, range(num_atoms)))
 
     for index, subexpr in enumerate(nodes, num_atoms):
         head = subexpr.children[0]
@@ -446,9 +388,9 @@ class ForwardGraph:
     See Also
     ========
 
-    TreeExpr: Representation of an expression as a tree.
+    Tree: Representation of an expression as a tree.
     """
 
-    atoms: list[TreeExpr]
-    heads: set[TreeExpr]
-    operations: list[tuple[TreeExpr, list[int]]]
+    atoms: list[Tree]
+    heads: set[Tree]
+    operations: list[tuple[Tree, list[int]]]

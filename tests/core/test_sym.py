@@ -19,7 +19,7 @@ from protosym.core.sym import star
 from protosym.core.sym import Sym
 from protosym.core.sym import SymAtomType
 from protosym.core.sym import SymEvaluator
-from protosym.core.tree import TreeAtom
+from protosym.core.tree import Tree
 
 
 class Expr(Sym):
@@ -72,7 +72,7 @@ def test_Sym() -> None:
     """Test a few properties of Sym separately."""
     s_one = Sym.new_atom("Integer", int)(1)
     assert str(s_one) == "1"
-    assert repr(s_one) == "Sym(TreeAtom(Integer(1)))"
+    assert repr(s_one) == "Sym(Tr(Integer(1)))"
 
 
 def test_Sym_str() -> None:
@@ -105,7 +105,7 @@ def test_Sym_types() -> None:
     assert type(Function) is SymAtomType
     assert type(cos) is Expr
     assert type(Add) is Expr
-    assert type(cos.rep) is TreeAtom
+    assert type(cos.rep) is Tree
     assert type(a) == type(b) == Expr
 
 

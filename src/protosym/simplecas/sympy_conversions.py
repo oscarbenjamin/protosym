@@ -44,8 +44,8 @@ sympy_sin = PyOp1[sympy.Basic](sympy.sin)  # pyright: ignore
 sympy_cos = PyOp1[sympy.Basic](sympy.cos)  # pyright: ignore
 sympy_tuple = PyOpN[sympy.Basic](lambda a: sympy.Tuple(*a))  # pyright: ignore
 sympy_undef_call = HeadOp[sympy.Basic](
-    lambda a, b: sympy.Function(str(a))(*b)
-)  # pyright: ignore
+    lambda a, b: sympy.Function(str(a))(*b)  # pyright: ignore
+)
 
 eval_to_sympy[Integer[a]] = sympy_integer(a)
 eval_to_sympy[Symbol[a]] = sympy_symbol(a)

@@ -8,8 +8,8 @@ from protosym.core.evaluate import Evaluator
 from protosym.core.evaluate import Transformer
 from protosym.core.exceptions import NoEvaluationRuleError
 from protosym.core.tree import funcs_symbols
-from protosym.core.tree import TreeAtom
-from protosym.core.tree import TreeExpr
+from protosym.core.tree import Tr
+from protosym.core.tree import Tree
 
 
 def test_Evaluator() -> None:
@@ -17,13 +17,13 @@ def test_Evaluator() -> None:
     Integer = AtomType("Integer", int)
     Function = AtomType("Function", str)
     Symbol = AtomType("Symbol", str)
-    one = TreeAtom(Integer(1))
-    two = TreeAtom(Integer(2))
-    cos = TreeAtom(Function("cos"))
-    sin = TreeAtom(Function("sin"))
-    Pow = TreeAtom(Function("Pow"))
-    Add = TreeAtom(Function("Add"))
-    x = TreeAtom(Symbol("x"))
+    one = Tr(Integer(1))
+    two = Tr(Integer(2))
+    cos = Tr(Function("cos"))
+    sin = Tr(Function("sin"))
+    Pow = Tr(Function("Pow"))
+    Add = Tr(Function("Add"))
+    x = Tr(Symbol("x"))
 
     eval_f64 = Evaluator[float]()
     eval_f64.add_atom(Integer, float)
@@ -32,7 +32,7 @@ def test_Evaluator() -> None:
     eval_f64.add_op2(Pow, pow)
     eval_f64.add_opn(Add, math.fsum)
 
-    test_cases: list[tuple[TreeExpr, dict[TreeExpr, float], float]] = [
+    test_cases: list[tuple[Tree, dict[Tree, float], float]] = [
         (sin(cos(one)), {}, 0.5143952585235492),
         (sin(cos(x)), {x: 1.0}, 0.5143952585235492),
         (Add(Pow(sin(one), two), Pow(cos(one), two)), {}, 1.0),
@@ -45,7 +45,7 @@ def test_Evaluator() -> None:
             assert eval_f64(expr) == expected
 
     # Test all implementations
-    eval_funcs: list[Callable[[TreeExpr, dict[TreeExpr, float]], float]] = [
+    eval_funcs: list[Callable[[Tree, dict[Tree, float]], float]] = [
         eval_f64,
         eval_f64.evaluate,
         eval_f64.eval_recursive,
@@ -60,7 +60,7 @@ def test_Transformer() -> None:
     """Test defining and using a Transformer."""
     [f, g], [x, y] = funcs_symbols(["f", "g"], ["x", "y"])
 
-    # A Transformer is an Evaluator that evaluates to a TreeExpr and provides
+    # A Transformer is an Evaluator that evaluates to a Tree and provides
     # defaults.
     f2g = Transformer()
     f2g.add_opn(f, lambda args: g(*args))
@@ -68,7 +68,7 @@ def test_Transformer() -> None:
     assert f2g(expr) == g(g(x, g(y)), y)
 
     # With Evaluator the above would fail without rules for Symbol and g:
-    f2g_eval = Evaluator[TreeExpr]()
+    f2g_eval = Evaluator[Tree]()
     f2g_eval.add_opn(f, lambda args: g(*args))
 
     # We need a rule for unknown atoms:
