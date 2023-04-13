@@ -11,13 +11,7 @@ Core types
 
 .. automodule:: protosym.core.tree
 
-.. autoclass:: protosym.core.tree::TreeExpr
-    :members:
-
-.. autoclass:: protosym.core.tree::TreeAtom
-    :members:
-
-.. autoclass:: protosym.core.tree::TreeNode
+.. autoclass:: protosym.core.tree::Tree
     :members:
 
 .. autofunction:: protosym.core.tree::funcs_symbols
