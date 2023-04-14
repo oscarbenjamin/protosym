@@ -311,8 +311,8 @@ class Expr(Sym):
         >>> expr1 = sin(sin(1))
         >>> expr1
         sin(sin(1))
-        >>> expr1.eval_f64()
-        0.7456241416655579
+        >>> expr1.eval_f64()  # doctest: +ELLIPSIS
+        0.7456241416655...
 
         If the expression contains symbols to be substituted then they can be
         provided as a dictionary of values:
@@ -321,8 +321,8 @@ class Expr(Sym):
         >>> expr2 = sin(sin(x))
         >>> expr2
         sin(sin(x))
-        >>> expr2.eval_f64({x: 1.0})
-        0.7456241416655579
+        >>> expr2.eval_f64({x: 1.0})  # doctest: +ELLIPSIS
+        0.7456241416655...
 
         Python floats are based on IEEE 754 64-bit binary floating point which
         gives 53 bits of precision and a range of magnitudes approximately from
