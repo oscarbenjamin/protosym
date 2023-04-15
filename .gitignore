@@ -13,3 +13,4 @@ __pycache__/
 .venv
 node_modules
 my
+.DS_Store
