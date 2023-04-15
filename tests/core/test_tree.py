@@ -131,4 +131,10 @@ def test_subsfunc() -> None:
     subs = SubsFunc(expr, [f(x, y)])
     assert subs(z) == f(z, g(y))
 
+    subs = SubsFunc(expr, [expr])
+    assert subs(t) == t
+
+    subs = SubsFunc(expr, [t])
+    assert subs(z) == expr
+
     raises(TypeError, lambda: subs(z, t))

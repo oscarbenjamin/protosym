@@ -263,7 +263,10 @@ def topological_sort(
         seen = set()
 
     expressions = []
-    stack = [(expression, get_children(expression))]
+    stack = []
+
+    if expression not in seen:
+        stack = [(expression, get_children(expression))]
 
     while stack:
         top, children = stack[-1]
@@ -482,8 +485,12 @@ class SubsFunc:
             else:
                 atoms.append(subexpr)
 
-        # Prune atoms that are not a child of any node.
-        atoms = [a for a in atoms if a in node_children]
+        if atoms and not nodes:
+            # We get here if the expression does not depend on the args.
+            atoms = [expr]
+        else:
+            # Prune atoms that are not a child of any node.
+            atoms = [a for a in atoms if a in node_children]
 
         num_args = len(args)
         num_args_atoms = num_args + len(atoms)

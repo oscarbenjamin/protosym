@@ -16,6 +16,7 @@ from protosym.core.sym import HeadOp
 from protosym.core.sym import HeadRule
 from protosym.core.sym import Sym
 from protosym.core.tree import forward_graph
+from protosym.core.tree import SubsFunc
 from protosym.core.tree import topological_sort
 from protosym.simplecas.exceptions import ExpressifyError
 
@@ -174,6 +175,21 @@ class Expr(Sym):
         args_expr = [expressify(arg) for arg in args]
         args_rep = [arg.rep for arg in args_expr]
         return Expr(self.rep(*args_rep))
+
+    def xreplace(self, reps: dict[Expressifiable, Expressifiable]) -> Expr:
+        """Replace subexpressions in an :class:`Expr`.
+
+        >>> from protosym.simplecas import cos, x, y
+        >>> e = cos(x) + x
+        >>> e.xreplace({x:y})
+        (cos(y) + y)
+        >>> e.xreplace({cos(x): x, x: y})
+        (x + y)
+        """
+        args = [expressify(old).rep for old in reps.keys()]
+        vals = [expressify(new).rep for new in reps.values()]
+        func = SubsFunc(self.rep, args)
+        return Expr(func(*vals))
 
     def __pos__(self) -> Expr:
         """+Expr -> Expr."""

@@ -63,6 +63,17 @@ def test_simplecas_identity() -> None:
         assert e1 is e2
 
 
+def test_xreplace() -> None:
+    """Test simple substitutions with xreplace."""
+    expr = x**2 + 1
+    assert expr.xreplace({x: 1}) == Integer(1) ** 2 + 1
+    assert expr.xreplace({x: y}) == y**2 + 1
+    assert expr.xreplace({x**2: y}) == y + 1
+    assert expr.xreplace({x**2 + 1: y}) == y
+    assert expr.xreplace({y: 1}) == x**2 + 1
+    assert expr.xreplace({1: 2}) == x**2 + 2
+
+
 def test_simplecas_operations() -> None:
     """Test arithmetic operations with Expr."""
     assert +x == x
@@ -157,8 +168,8 @@ def test_simplecas_to_sympy() -> None:
     test_cases = [
         (sin(x), sinx_sym),
         (cos(x), cosx_sym),
-        (cos(x) ** 2 + sin(x) ** 2, cosx_sym**2 + sinx_sym**2),
-        (cos(x) * sin(x), cosx_sym * sinx_sym),
+        (cos(x) ** 2 + sin(x) ** 2, cosx_sym**2 + sinx_sym**2),  # pyright: ignore
+        (cos(x) * sin(x), cosx_sym * sinx_sym),  # pyright: ignore
         (f(x), f_sym(x_sym)),
     ]
     for expr, sympy_expr in test_cases:
@@ -203,7 +214,7 @@ def test_simplecas_to_sympy_matrix() -> None:
     x_sym = sympy.Symbol("x")
     sinx_sym = sympy.sin(x_sym)
     cosx_sym = sympy.cos(x_sym)
-    M = sympy.Matrix([[sinx_sym, cosx_sym], [-cosx_sym, sinx_sym]])
+    M = sympy.Matrix([[sinx_sym, cosx_sym], [-cosx_sym, sinx_sym]])  # pyright: ignore
     assert M == Matrix.from_sympy(M).to_sympy()
 
 
