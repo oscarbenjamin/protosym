@@ -186,10 +186,19 @@ class Expr(Sym):
         >>> e.xreplace({cos(x): x, x: y})
         (x + y)
         """
-        args = [expressify(old).rep for old in reps.keys()]
-        vals = [expressify(new).rep for new in reps.values()]
-        func = SubsFunc(self.rep, args)
-        return Expr(func(*vals))
+        func = self.as_function(*reps)
+        return func(*reps.values())
+
+    def as_function(self, *args: Expressifiable) -> ExprFunction:
+        """Make a callable :class:`ExprFunction` out of this expression.
+
+        >>> from protosym.simplecas import cos, x, y
+        >>> expr = cos(x) + y
+        >>> func = expr.as_function(x, y)
+        >>> func(1, 2)
+        (cos(1) + 2)
+        """
+        return ExprFunction(self, args)
 
     def __pos__(self) -> Expr:
         """+Expr -> Expr."""
@@ -489,6 +498,31 @@ class Expr(Sym):
         from protosym.simplecas.lambdification import _to_llvm_f64
 
         return _to_llvm_f64([arg.rep for arg in symargs], self.rep)
+
+
+class ExprFunction:
+    """Function that rebuilds a symbolic expression.
+
+    See Also
+    ========
+
+    Expr.as_function: the usual way to create an :class:`ExprFunction`.
+    """
+
+    def __init__(self, expr: Expressifiable, params: tuple[Expressifiable, ...]):
+        """Create a new :class:`ExprFunction`."""
+        expr_rep = expressify(expr).rep
+        params_rep = [expressify(par).rep for par in params]
+        self.func = SubsFunc(expr_rep, params_rep)
+
+    def __call__(self, *args: Expressifiable) -> Expr:
+        """Call this :class:`ExprFunction` with arguments."""
+        args_rep = [expressify(arg).rep for arg in args]
+        return Expr(self.call(args_rep))
+
+    def call(self, args: list[Tree]) -> Tree:
+        """Call this :class:`ExprFunction` with :class:`Tree` arguments."""
+        return self.func(*args)
 
 
 eval_f64 = Expr.new_evaluator("eval_f64", float)

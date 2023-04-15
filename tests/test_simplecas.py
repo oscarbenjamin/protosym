@@ -117,6 +117,17 @@ def test_simplecas_expressify() -> None:
     raises(ExpressifyError, lambda: expressify([]))
 
 
+def test_simplecas_as_function() -> None:
+    """Basic test for as_function."""
+    assert cos(x).as_function(x)(1) == cos(1)
+    assert cos(x + y).as_function(x)(1) == cos(1 + y)
+    assert cos(x + y).as_function(y)(1) == cos(x + 1)
+    assert (cos(x) + sin(y)).as_function(x, y)(1, 2) == cos(1) + sin(2)
+    assert (cos(x) + sin(y)).as_function(y, x)(1, 2) == cos(2) + sin(1)
+    assert cos(x).as_function(y)(1) == cos(x)
+    assert cos(x).as_function(cos(x))(1) == Integer(1)
+
+
 def test_simplecas_repr() -> None:
     """Test basic operations with simplecas."""
     assert str(Integer) == "Integer"
