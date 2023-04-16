@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v3.5.0
+        uses: actions/checkout@v3.5.2
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4.5.0
@@ -96,7 +96,7 @@ jobs:
     needs: tests
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v3.5.0
+        uses: actions/checkout@v3.5.2
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v4.5.0
@@ -132,4 +132,4 @@ jobs:
           nox --force-color --session=coverage -- xml
 
       - name: Upload coverage report
-        uses: codecov/codecov-action@v3.1.1
+        uses: codecov/codecov-action@v3.1.2
