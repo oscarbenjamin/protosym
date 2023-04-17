@@ -3,8 +3,8 @@ name: GitHub Actions Version Updater
 # Controls when the action will run.
 on:
   schedule:
-    # Last day of every month
-    - cron:  '0 10 L * *'
+    # 28th of every month
+    - cron:  '0 10 28 * *'
 
 jobs:
   build:
