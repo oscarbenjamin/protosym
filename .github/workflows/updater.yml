@@ -1,7 +1,8 @@
 name: Update Dependencies
 on:
   schedule:
-    - cron:  '0 10 * * 1'
+    # Last day of the month
+    - cron:  '0 10 L * *'
   workflow_dispatch:
 
 jobs:
