@@ -20,7 +20,7 @@ Changelog = "https://github.com/oscarbenjamin/protosym/releases"
 python = "^3.8.1"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.3.0"
+pytest = "^7.3.1"
 coverage = {extras = ["toml"], version = "^7.2.3"}
 safety = "^2.3.5"
 mypy = "^1.2.0"
@@ -40,7 +40,7 @@ darglint = "^1.8.1"
 reorder-python-imports = "^3.9.0"
 pre-commit-hooks = "^4.4.0"
 sphinx-rtd-theme = "^1.2.0"
-Pygments = "^2.14.0"
+Pygments = "^2.15.0"
 nox = "^2022.11.21"
 gitpython = "^3.1.31"
 py = "^1.11.0"
