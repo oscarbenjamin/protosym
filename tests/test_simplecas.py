@@ -2,11 +2,15 @@ from pytest import raises
 from pytest import skip
 
 from protosym.core.sym import SymAtomType
+from protosym.simplecas import a
 from protosym.simplecas import Add
+from protosym.simplecas import b
 from protosym.simplecas import cos
+from protosym.simplecas import diff
 from protosym.simplecas import Expr
 from protosym.simplecas import expressify
 from protosym.simplecas import f
+from protosym.simplecas import Function
 from protosym.simplecas import g
 from protosym.simplecas import Integer
 from protosym.simplecas import lambdify
@@ -278,6 +282,22 @@ def test_simplecas_differentation() -> None:
     assert (sin(x) + cos(x)).diff(x) == cos(x) + -1 * sin(x)
     assert (sin(x) ** 2).diff(x) == 2 * sin(x) ** Add(2, -1) * cos(x)
     assert (x * sin(x)).diff(x) == 1 * sin(x) + x * cos(x)
+
+
+def test_simplecas_differentiation_rules() -> None:
+    """Test setting new differentation rules."""
+    f = Function("f")
+    diff[f(a), a] = 1 + f(a) ** 2
+    assert diff(f(f(x)), x) == (1 + f(f(x)) ** 2) * (1 + f(x) ** 2)
+
+    def set_bad1() -> None:
+        diff[f(a), a, b] = f(a)  # type: ignore
+
+    def set_bad2() -> None:
+        diff[f(a, a), a] = f(a)
+
+    raises(TypeError, set_bad1)
+    raises(TypeError, set_bad2)
 
 
 def test_simplecas_bin_expand() -> None:
