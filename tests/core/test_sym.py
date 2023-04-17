@@ -18,6 +18,7 @@ from protosym.core.sym import PyOpN
 from protosym.core.sym import star
 from protosym.core.sym import Sym
 from protosym.core.sym import SymAtomType
+from protosym.core.sym import SymDifferentiator
 from protosym.core.sym import SymEvaluator
 from protosym.core.tree import Tree
 
@@ -176,3 +177,40 @@ def test_Sym_evaluator_bad_rules() -> None:
         eval_f64.add_op(cos, lambda x: x)  # type:ignore
 
     raises(BadRuleError, set_bad_op)
+
+
+def test_SymDifferentiator() -> None:
+    """Test the SymDifferentiator wrapper for Differentiator."""
+    Integer, Function, cos, sin, Add, one, a, b, x = _make_atoms()
+    zero = Integer(0)
+    negone = Integer(-1)
+    Mul = Function("Mul")
+    Vector = Function("Vector")
+    Expr = type(one)
+    Symbol = Expr.new_atom("Symbol", str)
+    y = Symbol("y")
+
+    diff = SymDifferentiator(Expr, zero=zero, one=one, add=Add, mul=Mul)
+
+    assert diff(x, x) == one
+    assert diff(x, x, 2) == zero
+    assert diff(x, y) == zero
+
+    diff.add_distributive_rule(Vector)
+
+    assert diff(Vector(x, y), x) == Vector(one, zero)
+
+    diff[sin(a), a] = cos(a)
+    diff[cos(a), a] = Mul(negone, sin(a))
+
+    assert diff(sin(x), x) == cos(x)
+    assert diff(sin(sin(x)), x) == Mul(cos(sin(x)), cos(x))
+
+    def set_bad1() -> None:
+        diff[sin(a), a, b] = cos(a)  # type: ignore
+
+    def set_bad2() -> None:
+        diff[sin(a, a), a] = cos(a)
+
+    raises(TypeError, set_bad1)
+    raises(TypeError, set_bad2)

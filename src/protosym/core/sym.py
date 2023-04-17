@@ -20,8 +20,11 @@ from typing import TypeVar
 from weakref import WeakValueDictionary as _WeakDict
 
 from protosym.core.atom import AtomType
+from protosym.core.differentiate import diff_forward
+from protosym.core.differentiate import DiffProperties
 from protosym.core.evaluate import Evaluator
 from protosym.core.exceptions import BadRuleError
+from protosym.core.tree import SubsFunc
 from protosym.core.tree import Tr
 from protosym.core.tree import Tree
 
@@ -612,3 +615,71 @@ class SymEvaluator(Generic[T_sym, T_val]):
         if values is not None:
             values_rep = {e.rep: v for e, v in values.items()}
         return self.evaluator(expr.rep, values_rep)
+
+
+class SymDifferentiator(Generic[T_sym]):
+    """Representation of differentiation rules.
+
+    The Differentiator is created and then given rules for differentiation.
+
+    >>> from protosym.simplecas import (
+    ...     Function, Symbol, Expr, Add, Mul, zero, one, a, b)
+    >>> from protosym.core.sym import SymDifferentiator
+    >>> diff = SymDifferentiator(Expr, add=Add, mul=Mul, zero=zero, one=one)
+    >>> x = Symbol('x')
+    >>> tan = Function('tan')
+    >>> diff[tan(a), a] = 1 + tan(a)**2
+    >>> diff[a**b, a] = b * a**(b + (-1))
+    >>> diff(tan(tan(x)), x)
+    ((1 + tan(tan(x))**2)*(1 + tan(x)**2))
+    """
+
+    def __init__(
+        self,
+        new_sym: Type[T_sym],
+        *,
+        add: T_sym,
+        mul: T_sym,
+        zero: T_sym,
+        one: T_sym,
+    ):
+        """Create a new :class:`Differentiator`."""
+        self.new_sym = new_sym
+        self.diff_props = DiffProperties(
+            zero=zero.rep, one=one.rep, add=add.rep, mul=mul.rep
+        )
+
+    def add_distributive_rule(self, head: T_sym) -> None:
+        """Register that differentiation can distribute over ``head``.
+
+        This describes a rule like :math:`f(x, y)' = f(x', y')`.
+        """
+        self.diff_props.add_distributive(head.rep)
+
+    def __setitem__(self, expr_sym: tuple[T_sym, T_sym], dexpr: T_sym) -> None:
+        """Register a function rule like ``diff[sin(a), a] = cos(a)``."""
+        if not isinstance(expr_sym, tuple) or len(expr_sym) != 2:
+            raise TypeError("Pattern should be an expr-sym pair like diff[cos(a), a]")
+
+        expr, sym = expr_sym
+
+        expr_r = expr.rep
+        dexpr_r = dexpr.rep
+        sym_r = sym.rep
+
+        head = expr_r.children[0]
+        args_lhs = expr_r.children[1:]
+        if args_lhs.count(sym_r) != 1:
+            raise TypeError("Multiple occurrences of wild symbol in pattern.")
+        index = args_lhs.index(sym_r)
+
+        rhsfunc = SubsFunc(dexpr_r, list(args_lhs))
+        self.diff_props.add_diff_rule(head, index, rhsfunc)
+
+    def __call__(self, expr: T_sym, sym: T_sym, ntimes: int = 1) -> T_sym:
+        """Compute the derivative of ``expr`` wrt ``sym`` ``ntimes``."""
+        d_expr = expr.rep
+        symrep = sym.rep
+        for _ in range(ntimes):
+            d_expr = diff_forward(d_expr, symrep, self.diff_props)
+        return self.new_sym(d_expr)

@@ -5,7 +5,6 @@ from functools import reduce
 from functools import wraps
 from typing import Any
 from typing import Callable
-from typing import Generic
 from typing import Optional
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import TypeVar
@@ -17,7 +16,7 @@ from protosym.core.sym import AtomRule
 from protosym.core.sym import HeadOp
 from protosym.core.sym import HeadRule
 from protosym.core.sym import Sym
-from protosym.core.tree import forward_graph
+from protosym.core.sym import SymDifferentiator
 from protosym.core.tree import SubsFunc
 from protosym.core.tree import topological_sort
 from protosym.simplecas.exceptions import ExpressifyError
@@ -447,12 +446,24 @@ class Expr(Sym):
         >>> expr.count_ops_tree()
         893621974
 
+        Differentiation rules for new functions can be added as needed:
+
+        >>> from protosym.simplecas import Expr, Function, diff
+        >>> a = Expr.new_wild('a')
+        >>> tan = Function('tan')
+        >>> diff[tan(a), a] = 1 + tan(a)**2
+        >>> tan(tan(x)).diff(x)
+        ((1 + tan(tan(x))**2)*(1 + tan(x)**2))
+
         Notes
         =====
 
         Currently the differentiation algorithm is based on *forward
         accumulation* which is a common technique in the automatic
         differentiation literature.
+
+        See Also
+        ========
 
         References
         ==========
@@ -559,186 +570,23 @@ bin_expand.add_opn(Add.rep, lambda args: reduce(Add.rep, args))
 bin_expand.add_opn(Mul.rep, lambda args: reduce(Mul.rep, args))
 
 #
-# Maybe it should be possible to just pass these as arguments to the Evaluator
-# constructor.
+# An evaluator to count the size of an expression tree.
 #
 a = Expr.new_wild("a")
 b = Expr.new_wild("b")
 
-one_func = AtomFunc[int](lambda a: 1)
-sum_plus_one = HeadOp[int](lambda head, counts: 1 + sum(counts))
+one_func = AtomFunc[int](lambda _: 1)
+sum_plus_one = HeadOp[int](lambda _, counts: 1 + sum(counts))
 
 count_ops_tree = Expr.new_evaluator("count_ops_tree", int)
 count_ops_tree[AtomRule[a]] = one_func(a)
 count_ops_tree[HeadRule(a, b)] = sum_plus_one(a, b)
 
 #
-# We will need to think of a better structure for differentiation. Ideally it
-# would be implemented as a generic routine in core but it really needs to know
-# about Add, Mul, Pow, Integer etc so for now we implement it here. Probably
-# what is needed is something like a differentiation "context" object that
-# provides the necessary Add, Mul, Pow, zero, one etc that could be passed into
-# the core differentiation routine along with the special case rules like
-# sin->cos.
-#
-# Certainly differentiation is an example that blurs a bit the line between
-# having a generic core that is agnostic to the kinds of expressions that we
-# want to operate on and then defining everything else outside the core.
+# Differentiation.
 #
 
-
-class Differentiator(Generic[T_sym]):
-    """Representation of differentiation rules.
-
-    The Differentiator is created and then given rules for differentiation.
-
-    >>> from protosym.simplecas import (
-    ...     Function, Symbol, Expr, Add, Mul, zero, one, a, b)
-    >>> from protosym.simplecas.expr import Differentiator
-    >>> diff = Differentiator(Expr, Add, Mul, zero, one)
-    >>> x = Symbol('x')
-    >>> tan = Function('tan')
-    >>> diff[tan(a), a] = 1 + tan(a)**2
-    >>> diff[a**b, a] = b * a**(b + (-1))
-    >>> diff(tan(tan(x)), x)
-    ((1 + tan(tan(x))**2)*(1 + tan(x)**2))
-    """
-
-    def __init__(
-        self,
-        new_sym: Callable[[Tree], T_sym],
-        add: T_sym,
-        mul: T_sym,
-        zero: T_sym,
-        one: T_sym,
-    ):
-        """Create a new Differentiator."""
-        self.new_sym = new_sym
-        self.ops = (add.rep, mul.rep, zero.rep, one.rep)
-        self.rules: dict[tuple[Tree, int], Callable[..., Tree]] = {}
-        self.distributive: set[Tree] = set()
-
-    def add_distributive_rule(self, head: T_sym) -> None:
-        """Register that differentiation can distribute over ``head``.
-
-        This describes a rule like f(x, y)' = f(x', y').
-        """
-        self.distributive.add(head.rep)
-
-    def __setitem__(self, expr_sym: tuple[T_sym, T_sym], dexpr: T_sym) -> None:
-        """Register a function rule like ``diff[sin(a), a] = cos(a)``."""
-        if not isinstance(expr_sym, tuple) or len(expr_sym) != 2:
-            raise TypeError("Pattern should be an expr-sym pair like diff[cos(a), a]")
-
-        expr, sym = expr_sym
-
-        expr_r = expr.rep
-        dexpr_r = dexpr.rep
-        sym_r = sym.rep
-
-        head = expr_r.children[0]
-        args_lhs = expr_r.children[1:]
-        if args_lhs.count(sym_r) != 1:
-            raise TypeError("Multiple occurrences of wild symbol in pattern.")
-        index = args_lhs.index(sym_r)
-
-        rhsfunc = SubsFunc(dexpr_r, list(args_lhs))
-        self.rules[(head, index)] = rhsfunc
-
-    def __call__(self, expr: T_sym, sym: T_sym, ntimes: int = 1) -> T_sym:
-        """Compute the derivative of ``expr`` wrt ``sym`` ``ntimes``."""
-        d_expr = expr.rep
-        symrep = sym.rep
-        for _ in range(ntimes):
-            d_expr = _diff_forward(
-                d_expr, symrep, self.ops, self.rules, self.distributive
-            )
-        return self.new_sym(d_expr)
-
-
-def _prod_rule_forward(
-    args: list[Tree], diff_args: list[Tree], mul: Tree
-) -> list[Tree]:
-    """Product rule in forward accumulation."""
-    terms: list[Tree] = []
-    for n, diff_arg in enumerate(diff_args):
-        if diff_arg != zero.rep:
-            term = mul(*args[:n], diff_arg, *args[n + 1 :])
-            terms.append(term)
-    return terms
-
-
-def _chain_rule_forward(
-    func: Tree,
-    args: list[Tree],
-    diff_args: list[Tree],
-    rules: dict[tuple[Tree, int], Callable[..., Tree]],
-) -> list[Tree]:
-    """Chain rule in forward accumulation."""
-    terms: list[Tree] = []
-    for n, diff_arg in enumerate(diff_args):
-        if diff_arg != zero.rep:
-            pdiff = rules[(func, n)]
-            diff_term = pdiff(*args)
-            if diff_arg != one.rep:
-                diff_term = Mul.rep(diff_term, diff_arg)
-            terms.append(diff_term)
-    return terms
-
-
-def _diff_forward(
-    expression: Tree,
-    sym: Tree,
-    ops: tuple[Tree, Tree, Tree, Tree],
-    rules: dict[tuple[Tree, int], Callable[..., Tree]],
-    distributive: set[Tree],
-) -> Tree:
-    """Derivative of expression wrt sym.
-
-    Uses forward accumulation algorithm.
-    """
-    add, mul, zero, one = ops
-
-    graph = forward_graph(expression)
-
-    stack = list(graph.atoms)
-    diff_stack = [one if expr == sym else zero for expr in stack]
-
-    for func, indices in graph.operations:
-        args = [stack[i] for i in indices]
-        diff_args = [diff_stack[i] for i in indices]
-        expr = func(*args)
-
-        if func in distributive:
-            diff_terms = [func(*diff_args)]
-        elif set(diff_args) == {zero}:
-            # XXX: This could return the wrong thing if the expression has an
-            # unrecognised head and does not represent a number.
-            diff_terms = []
-        elif func == add:
-            diff_terms = [da for da in diff_args if da != zero]
-        elif func == mul:
-            diff_terms = _prod_rule_forward(args, diff_args, mul)
-        else:
-            diff_terms = _chain_rule_forward(func, args, diff_args, rules)
-
-        if not diff_terms:
-            derivative = zero
-        elif len(diff_terms) == 1:
-            derivative = diff_terms[0]
-        else:
-            derivative = add(*diff_terms)
-
-        stack.append(expr)
-        diff_stack.append(derivative)
-
-    # At this point stack is a topological sort of expr and diff_stack is the
-    # list of derivatives of every subexpression in expr. At the top of the
-    # stack is expr and its derivative is at the top of diff_stack.
-    return diff_stack[-1]
-
-
-diff = Differentiator(Expr, Add, Mul, zero, one)
+diff = SymDifferentiator(Expr, add=Add, mul=Mul, zero=zero, one=one)
 
 diff[sin(a), a] = cos(a)
 diff[cos(a), a] = -sin(a)
