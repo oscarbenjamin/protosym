@@ -13,6 +13,7 @@ from protosym.core.atom import AtomType
 
 
 if _TYPE_CHECKING:
+    from typing import Optional
     from protosym.core.atom import AnyAtom
 
 
@@ -195,7 +196,12 @@ def funcs_symbols(
     return functions, symbols
 
 
-def topological_sort(expression: Tree, *, heads: bool = False) -> list[Tree]:
+def topological_sort(
+    expression: Tree,
+    *,
+    heads: bool = False,
+    exclude: Optional[set[Tree]] = None,
+) -> list[Tree]:
     """List of subexpressions of a :class:`Tree` sorted topologically.
 
     Create some functions and symbols and use them to make an expression:
@@ -251,9 +257,16 @@ def topological_sort(expression: Tree, *, heads: bool = False) -> list[Tree]:
             children = expr.children[1:]
         return list(children)[::-1]
 
-    seen = set()
+    if exclude is not None:
+        seen = set(exclude)
+    else:
+        seen = set()
+
     expressions = []
-    stack = [(expression, get_children(expression))]
+    stack = []
+
+    if expression not in seen:
+        stack = [(expression, get_children(expression))]
 
     while stack:
         top, children = stack[-1]
@@ -272,6 +285,8 @@ def topological_sort(expression: Tree, *, heads: bool = False) -> list[Tree]:
 
 def topological_split(
     expr: Tree,
+    *,
+    exclude: Optional[set[Tree]] = None,
 ) -> tuple[list[Tree], set[Tree], list[Tree]]:
     """Topological sort split into atoms, heads and compound expressions.
 
@@ -302,7 +317,7 @@ def topological_split(
     Tree: The expression class that this operates on.
     topological_sort: Topological sort as a list of all subexpressions.
     """
-    subexpressions = topological_sort(expr)
+    subexpressions = topological_sort(expr, exclude=exclude)
 
     atoms: list[Tree] = []
     heads: set[Tree] = set()
@@ -394,3 +409,119 @@ class ForwardGraph:
     atoms: list[Tree]
     heads: set[Tree]
     operations: list[tuple[Tree, list[int]]]
+
+
+class SubsFunc:
+    """Callable for performing substitutions into a Tree.
+
+    We first make some symbols and an expression:
+
+    >>> from protosym.core.tree import funcs_symbols
+    >>> [f, g, h], [x, y, z] = funcs_symbols(['f', 'g', 'h'], ['x', 'y', 'z'])
+    >>> expr = h(g(x, y), f(x, y))
+
+    Now we can make a :class:`SubsFunc` for substituting `y` and replacing it
+    with some other expression:
+
+    >>> subsy = SubsFunc(expr, [y])
+    >>> print(expr)
+    h(g(x, y), f(x, y))
+    >>> print(subsy(z))
+    h(g(x, z), f(x, z))
+
+    We can also substitute non-atomic expressions:
+
+    >>> subs_fxy = SubsFunc(expr, [f(x, y)])
+    >>> print(expr)
+    h(g(x, y), f(x, y))
+    >>> print(subs_fxy(z))
+    h(g(x, y), z)
+
+    Overlapping substitutions are handled because all substitutions are
+    perfomed simultaneously:
+
+    >>> subs_gxy_x = SubsFunc(expr, [g(x, y), x])
+    >>> print(expr)
+    h(g(x, y), f(x, y))
+    >>> print(subs_gxy_x(z, g(z)))
+    h(z, f(g(z), y))
+
+    Creating a :class:`SubsFunc` is more expensive than calling it to perform
+    the substitution so the intended use is for a situation in which the same
+    :class:`SubsFunc` will be reused for many calls to replace the same values
+    from one expression with different replacement values.
+    """
+
+    nargs: int
+    atoms: list[Tree]
+    operations: list[list[int]]
+
+    def __new__(cls, expr: Tree, args: list[Tree]) -> SubsFunc:
+
+        # A topological sort but exluding the args because they will be
+        # replaced in the substitution anyway.
+        subexpressions = topological_sort(expr, heads=True, exclude=set(args))
+
+        atoms = []
+        nodes = []
+
+        has_args = set(args)
+        node_children = set()
+
+        for subexpr in subexpressions:
+            children = subexpr.children
+            if children:
+                children_set = set(children)
+                if children_set & has_args:
+                    has_args.add(subexpr)
+                    node_children.update(children_set)
+                    nodes.append(subexpr)
+                else:
+                    # This node does not include args in its indirect children
+                    # so the substitution would not change its value. We treat
+                    # it then as an atomic expression for the purpose of
+                    # performing the substtution.
+                    atoms.append(subexpr)
+            else:
+                atoms.append(subexpr)
+
+        if atoms and not nodes:
+            # We get here if the expression does not depend on the args.
+            atoms = [expr]
+        else:
+            # Prune atoms that are not a child of any node.
+            atoms = [a for a in atoms if a in node_children]
+
+        num_args = len(args)
+        num_args_atoms = num_args + len(atoms)
+
+        indices: dict[Tree, int] = dict(zip(args, range(num_args)))
+        indices.update(dict(zip(atoms, range(num_args, num_args_atoms))))
+
+        operations = []
+        for index, node in enumerate(nodes, num_args_atoms):
+            indices[node] = index
+            child_indices = [indices[c] for c in node.children]
+            operations.append(child_indices)
+
+        obj = super().__new__(cls)
+        obj.nargs = num_args
+        obj.atoms = atoms
+        obj.operations = operations
+
+        return obj
+
+    def __call__(self, *args: Tree) -> Tree:
+        return self.call(args)
+
+    def call(self, args: tuple[Tree, ...]) -> Tree:
+        if len(args) != self.nargs:
+            raise TypeError("Wrong number of arguments")
+
+        stack = list(args) + self.atoms
+
+        for indices in self.operations:
+            children = [stack[i] for i in indices]
+            stack.append(Tree(*children))
+
+        return stack[-1]

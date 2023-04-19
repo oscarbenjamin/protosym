@@ -5,7 +5,6 @@ from typing import Any
 from typing import Sequence
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 
-from protosym.simplecas.expr import _diff_forward
 from protosym.simplecas.expr import Add
 from protosym.simplecas.expr import Expr
 from protosym.simplecas.expr import expressify
@@ -137,8 +136,8 @@ class Matrix:
             raise TypeError("Differentiation var should be a symbol.")
         # Use the element_graph rather than differentiating each element
         # separately.
-        elements_diff = _diff_forward(self.elements_graph.rep, sym.rep)
-        new_elements: list[Expr] = list(Expr(elements_diff).args)  # pyright: ignore
+        elements_diff = self.elements_graph.diff(sym)
+        new_elements: list[Expr] = list(elements_diff.args)
         return self._new(self.nrows, self.ncols, new_elements, self.entrymap)
 
     def to_llvm_ir(self, symargs: list[Expr]) -> str:

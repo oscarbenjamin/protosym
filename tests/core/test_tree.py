@@ -5,6 +5,7 @@ from protosym.core.atom import AtomType
 from protosym.core.tree import forward_graph
 from protosym.core.tree import ForwardGraph
 from protosym.core.tree import funcs_symbols
+from protosym.core.tree import SubsFunc
 from protosym.core.tree import topological_sort
 from protosym.core.tree import topological_split
 from protosym.core.tree import Tr
@@ -87,6 +88,16 @@ def test_topological_sort_split() -> None:
     assert topological_sort(expr, heads=False) == subexpressions[1:]
     assert topological_sort(expr, heads=True) == subexpressions
 
+    # Test generating a topological sort that excludes f(x, y).
+    # This also excludes children like y that do not appear elsewhere.
+    expected_exclude = [
+        x,
+        f(x),
+        f(f(x), f(x, y)),
+        f(f(x, y), f(f(x), f(x, y))),
+    ]
+    assert topological_sort(expr, exclude={f(x, y)}) == expected_exclude
+
     expected_split = (
         [x, y],
         {f},
@@ -108,3 +119,22 @@ def test_forward_graph() -> None:
     )
 
     assert forward_graph(expr) == expected
+
+
+def test_subsfunc() -> None:
+    """Test basic functionality of SubsFunc."""
+    [f, g], [x, y, z, t] = funcs_symbols(["f", "g"], ["x", "y", "z", "t"])
+    expr = f(f(x, y), g(y))
+    subs = SubsFunc(expr, [x, y])
+    assert subs(z, t) == f(f(z, t), g(t))
+
+    subs = SubsFunc(expr, [f(x, y)])
+    assert subs(z) == f(z, g(y))
+
+    subs = SubsFunc(expr, [expr])
+    assert subs(t) == t
+
+    subs = SubsFunc(expr, [t])
+    assert subs(z) == expr
+
+    raises(TypeError, lambda: subs(z, t))

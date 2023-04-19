@@ -7,6 +7,7 @@ from typing import Any
 from typing import Callable
 from typing import Optional
 from typing import TYPE_CHECKING as _TYPE_CHECKING
+from typing import TypeVar
 from typing import Union
 
 from protosym.core.evaluate import Transformer
@@ -15,9 +16,13 @@ from protosym.core.sym import AtomRule
 from protosym.core.sym import HeadOp
 from protosym.core.sym import HeadRule
 from protosym.core.sym import Sym
-from protosym.core.tree import forward_graph
+from protosym.core.sym import SymDifferentiator
+from protosym.core.tree import SubsFunc
 from protosym.core.tree import topological_sort
 from protosym.simplecas.exceptions import ExpressifyError
+
+
+T_sym = TypeVar("T_sym", bound=Sym)
 
 
 if _TYPE_CHECKING:
@@ -174,6 +179,30 @@ class Expr(Sym):
         args_expr = [expressify(arg) for arg in args]
         args_rep = [arg.rep for arg in args_expr]
         return Expr(self.rep(*args_rep))
+
+    def xreplace(self, reps: dict[Expressifiable, Expressifiable]) -> Expr:
+        """Replace subexpressions in an :class:`Expr`.
+
+        >>> from protosym.simplecas import cos, x, y
+        >>> e = cos(x) + x
+        >>> e.xreplace({x:y})
+        (cos(y) + y)
+        >>> e.xreplace({cos(x): x, x: y})
+        (x + y)
+        """
+        func = self.as_function(*reps)
+        return func(*reps.values())
+
+    def as_function(self, *args: Expressifiable) -> ExprFunction:
+        """Make a callable :class:`ExprFunction` out of this expression.
+
+        >>> from protosym.simplecas import cos, x, y
+        >>> expr = cos(x) + y
+        >>> func = expr.as_function(x, y)
+        >>> func(1, 2)
+        (cos(1) + 2)
+        """
+        return ExprFunction(self, args)
 
     def __pos__(self) -> Expr:
         """+Expr -> Expr."""
@@ -417,23 +446,34 @@ class Expr(Sym):
         >>> expr.count_ops_tree()
         893621974
 
+        Differentiation rules for new functions can be added as needed:
+
+        >>> from protosym.simplecas import Expr, Function, diff
+        >>> a = Expr.new_wild('a')
+        >>> tan = Function('tan')
+        >>> diff[tan(a), a] = 1 + tan(a)**2
+        >>> tan(tan(x)).diff(x)
+        ((1 + tan(tan(x))**2)*(1 + tan(x)**2))
+
         Notes
         =====
 
         Currently the differentiation algorithm is based on *forward
-        accumulation* which is a common technique in the authomatic
+        accumulation* which is a common technique in the automatic
         differentiation literature.
+
+        See Also
+        ========
 
         References
         ==========
 
         https://en.wikipedia.org/wiki/Automatic_differentiation
         """
-        deriv_rep = self.rep
-        sym_rep = sym.rep
+        deriv = self
         for _ in range(ntimes):
-            deriv_rep = _diff_forward(deriv_rep, sym_rep)
-        return Expr(deriv_rep)
+            deriv = diff(deriv, sym)
+        return deriv
 
     def bin_expand(self) -> Expr:
         """Expand associative operators to binary operations.
@@ -475,6 +515,31 @@ class Expr(Sym):
         return _to_llvm_f64([arg.rep for arg in symargs], self.rep)
 
 
+class ExprFunction:
+    """Function that rebuilds a symbolic expression.
+
+    See Also
+    ========
+
+    Expr.as_function: the usual way to create an :class:`ExprFunction`.
+    """
+
+    def __init__(self, expr: Expressifiable, params: tuple[Expressifiable, ...]):
+        """Create a new :class:`ExprFunction`."""
+        expr_rep = expressify(expr).rep
+        params_rep = [expressify(par).rep for par in params]
+        self.func = SubsFunc(expr_rep, params_rep)
+
+    def __call__(self, *args: Expressifiable) -> Expr:
+        """Call this :class:`ExprFunction` with arguments."""
+        args_rep = [expressify(arg).rep for arg in args]
+        return Expr(self.call(args_rep))
+
+    def call(self, args: list[Tree]) -> Tree:
+        """Call this :class:`ExprFunction` with :class:`Tree` arguments."""
+        return self.func(*args)
+
+
 eval_f64 = Expr.new_evaluator("eval_f64", float)
 eval_repr = Expr.new_evaluator("eval_repr", str)
 eval_latex = Expr.new_evaluator("eval_latex", str)
@@ -505,109 +570,25 @@ bin_expand.add_opn(Add.rep, lambda args: reduce(Add.rep, args))
 bin_expand.add_opn(Mul.rep, lambda args: reduce(Mul.rep, args))
 
 #
-# Maybe it should be possible to just pass these as arguments to the Evaluator
-# constructor.
+# An evaluator to count the size of an expression tree.
 #
 a = Expr.new_wild("a")
 b = Expr.new_wild("b")
 
-one_func = AtomFunc[int](lambda a: 1)
-sum_plus_one = HeadOp[int](lambda head, counts: 1 + sum(counts))
+one_func = AtomFunc[int](lambda _: 1)
+sum_plus_one = HeadOp[int](lambda _, counts: 1 + sum(counts))
 
 count_ops_tree = Expr.new_evaluator("count_ops_tree", int)
 count_ops_tree[AtomRule[a]] = one_func(a)
 count_ops_tree[HeadRule(a, b)] = sum_plus_one(a, b)
 
 #
-# We will need to think of a better structure for differentiation. Ideally it
-# would be implemented as a generic routine in core but it really needs to know
-# about Add, Mul, Pow, Integer etc so for now we implement it here. Probably
-# what is needed is something like a differentiation "context" object that
-# provides the necessary Add, Mul, Pow, zero, one etc that could be passed into
-# the core differentiation routine along with the special case rules like
-# sin->cos.
-#
-# Certainly differentiation is an example that blurs a bit the line between
-# having a generic core that is agnostic to the kinds of expressions that we
-# want to operate on and then defining everything else outside the core.
+# Differentiation.
 #
 
+diff = SymDifferentiator(Expr, add=Add, mul=Mul, zero=zero, one=one)
 
-derivatives: dict[tuple[Tree, int], Callable[..., Tree]] = {
-    (sin.rep, 0): cos.rep,
-    (cos.rep, 0): lambda e: Mul.rep(negone.rep, sin.rep(e)),
-    (Pow.rep, 0): lambda b, e: Mul.rep(e, Pow.rep(b, Add.rep(e, negone.rep))),
-}
-
-
-def _prod_rule_forward(args: list[Tree], diff_args: list[Tree]) -> list[Tree]:
-    """Product rule in forward accumulation."""
-    terms: list[Tree] = []
-    for n, diff_arg in enumerate(diff_args):
-        if diff_arg != zero.rep:
-            term = Mul.rep(*args[:n], diff_arg, *args[n + 1 :])
-            terms.append(term)
-    return terms
-
-
-def _chain_rule_forward(
-    func: Tree, args: list[Tree], diff_args: list[Tree]
-) -> list[Tree]:
-    """Chain rule in forward accumulation."""
-    terms: list[Tree] = []
-    for n, diff_arg in enumerate(diff_args):
-        if diff_arg != zero.rep:
-            pdiff = derivatives[(func, n)]
-            diff_term = pdiff(*args)
-            if diff_arg != one.rep:
-                diff_term = Mul.rep(diff_term, diff_arg)
-            terms.append(diff_term)
-    return terms
-
-
-def _diff_forward(expression: Tree, sym: Tree) -> Tree:
-    """Derivative of expression wrt sym.
-
-    Uses forward accumulation algorithm.
-    """
-    #
-    # Using rep everywhere here shows that we are probably implementing this at
-    # the wrong level.
-    #
-
-    graph = forward_graph(expression)
-
-    stack = list(graph.atoms)
-    diff_stack = [one.rep if expr == sym else zero.rep for expr in stack]
-
-    for func, indices in graph.operations:
-        args = [stack[i] for i in indices]
-        diff_args = [diff_stack[i] for i in indices]
-        expr = func(*args)
-        diff_terms: list[Tree]
-
-        if func == List.rep:
-            diff_terms = [List.rep(*diff_args)]
-        elif set(diff_args) == {zero.rep}:
-            diff_terms = []
-        elif func == Add.rep:
-            diff_terms = [da for da in diff_args if da != zero.rep]
-        elif func == Mul.rep:
-            diff_terms = _prod_rule_forward(args, diff_args)
-        else:
-            diff_terms = _chain_rule_forward(func, args, diff_args)
-
-        if not diff_terms:
-            derivative = zero.rep
-        elif len(diff_terms) == 1:
-            derivative = diff_terms[0]
-        else:
-            derivative = Add.rep(*diff_terms)
-
-        stack.append(expr)
-        diff_stack.append(derivative)
-
-    # At this point stack is a topological sort of expr and diff_stack is the
-    # list of derivatives of every subexpression in expr. At the top of the
-    # stack is expr and its derivative is at the top of diff_stack.
-    return diff_stack[-1]
+diff[sin(a), a] = cos(a)
+diff[cos(a), a] = -sin(a)
+diff[a**b, a] = b * a ** (b + (-1))  # what if b=0?
+diff.add_distributive_rule(List)

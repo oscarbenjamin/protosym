@@ -2,11 +2,15 @@ from pytest import raises
 from pytest import skip
 
 from protosym.core.sym import SymAtomType
+from protosym.simplecas import a
 from protosym.simplecas import Add
+from protosym.simplecas import b
 from protosym.simplecas import cos
+from protosym.simplecas import diff
 from protosym.simplecas import Expr
 from protosym.simplecas import expressify
 from protosym.simplecas import f
+from protosym.simplecas import Function
 from protosym.simplecas import g
 from protosym.simplecas import Integer
 from protosym.simplecas import lambdify
@@ -63,6 +67,17 @@ def test_simplecas_identity() -> None:
         assert e1 is e2
 
 
+def test_xreplace() -> None:
+    """Test simple substitutions with xreplace."""
+    expr = x**2 + 1
+    assert expr.xreplace({x: 1}) == Integer(1) ** 2 + 1
+    assert expr.xreplace({x: y}) == y**2 + 1
+    assert expr.xreplace({x**2: y}) == y + 1
+    assert expr.xreplace({x**2 + 1: y}) == y
+    assert expr.xreplace({y: 1}) == x**2 + 1
+    assert expr.xreplace({1: 2}) == x**2 + 2
+
+
 def test_simplecas_operations() -> None:
     """Test arithmetic operations with Expr."""
     assert +x == x
@@ -104,6 +119,17 @@ def test_simplecas_expressify() -> None:
     assert expressify(1) == Integer(1)
     assert expressify(x) == x
     raises(ExpressifyError, lambda: expressify([]))
+
+
+def test_simplecas_as_function() -> None:
+    """Basic test for as_function."""
+    assert cos(x).as_function(x)(1) == cos(1)
+    assert cos(x + y).as_function(x)(1) == cos(1 + y)
+    assert cos(x + y).as_function(y)(1) == cos(x + 1)
+    assert (cos(x) + sin(y)).as_function(x, y)(1, 2) == cos(1) + sin(2)
+    assert (cos(x) + sin(y)).as_function(y, x)(1, 2) == cos(2) + sin(1)
+    assert cos(x).as_function(y)(1) == cos(x)
+    assert cos(x).as_function(cos(x))(1) == Integer(1)
 
 
 def test_simplecas_repr() -> None:
@@ -157,8 +183,8 @@ def test_simplecas_to_sympy() -> None:
     test_cases = [
         (sin(x), sinx_sym),
         (cos(x), cosx_sym),
-        (cos(x) ** 2 + sin(x) ** 2, cosx_sym**2 + sinx_sym**2),
-        (cos(x) * sin(x), cosx_sym * sinx_sym),
+        (cos(x) ** 2 + sin(x) ** 2, cosx_sym**2 + sinx_sym**2),  # pyright: ignore
+        (cos(x) * sin(x), cosx_sym * sinx_sym),  # pyright: ignore
         (f(x), f_sym(x_sym)),
     ]
     for expr, sympy_expr in test_cases:
@@ -203,7 +229,7 @@ def test_simplecas_to_sympy_matrix() -> None:
     x_sym = sympy.Symbol("x")
     sinx_sym = sympy.sin(x_sym)
     cosx_sym = sympy.cos(x_sym)
-    M = sympy.Matrix([[sinx_sym, cosx_sym], [-cosx_sym, sinx_sym]])
+    M = sympy.Matrix([[sinx_sym, cosx_sym], [-cosx_sym, sinx_sym]])  # pyright: ignore
     assert M == Matrix.from_sympy(M).to_sympy()
 
 
@@ -256,6 +282,22 @@ def test_simplecas_differentation() -> None:
     assert (sin(x) + cos(x)).diff(x) == cos(x) + -1 * sin(x)
     assert (sin(x) ** 2).diff(x) == 2 * sin(x) ** Add(2, -1) * cos(x)
     assert (x * sin(x)).diff(x) == 1 * sin(x) + x * cos(x)
+
+
+def test_simplecas_differentiation_rules() -> None:
+    """Test setting new differentation rules."""
+    f = Function("f")
+    diff[f(a), a] = 1 + f(a) ** 2
+    assert diff(f(f(x)), x) == (1 + f(f(x)) ** 2) * (1 + f(x) ** 2)
+
+    def set_bad1() -> None:
+        diff[f(a), a, b] = f(a)  # type: ignore
+
+    def set_bad2() -> None:
+        diff[f(a, a), a] = f(a)
+
+    raises(TypeError, set_bad1)
+    raises(TypeError, set_bad2)
 
 
 def test_simplecas_bin_expand() -> None:

@@ -7,6 +7,7 @@ from .expr import Add
 from .expr import b
 from .expr import bin_expand
 from .expr import cos
+from .expr import diff
 from .expr import Expr
 from .expr import expressify
 from .expr import f
@@ -29,6 +30,7 @@ from .matrix import Matrix
 
 __all__ = [
     "expressify",
+    "diff",
     "Expr",
     "Matrix",
     "Function",
