@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -o errexit
+
 # # Clone rust_protosym in parallel directory:
 #
 # git clone https://github.com/oscarbenjamin/rust_protosym.git ../rust_protosym
