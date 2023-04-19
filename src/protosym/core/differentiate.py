@@ -145,4 +145,4 @@ except ImportError:
     rust_protosym = None
 
 if rust_protosym is not None:  # pragma: no cover
-    from rust_protosym import DiffProperties  # type:ignore # noqa
+    from rust_protosym import DiffProperties, diff_forward  # type:ignore # noqa
