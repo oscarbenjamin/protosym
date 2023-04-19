@@ -127,14 +127,26 @@ def test_subsfunc() -> None:
     expr = f(f(x, y), g(y))
     subs = SubsFunc(expr, [x, y])
     assert subs(z, t) == f(f(z, t), g(t))
+    assert subs.nargs == 2
+    assert subs.atoms == [f, g]
+    assert subs.operations == [[2, 0, 1], [3, 1], [2, 4, 5]]
 
     subs = SubsFunc(expr, [f(x, y)])
     assert subs(z) == f(z, g(y))
+    assert subs.nargs == 1
+    assert subs.atoms == [f, g(y)]
+    assert subs.operations == [[1, 0, 2]]
 
     subs = SubsFunc(expr, [expr])
     assert subs(t) == t
+    assert subs.nargs == 1
+    assert subs.atoms == []
+    assert subs.operations == []
 
     subs = SubsFunc(expr, [t])
     assert subs(z) == expr
+    assert subs.nargs == 1
+    assert subs.atoms == [expr]
+    assert subs.operations == []
 
     raises(TypeError, lambda: subs(z, t))

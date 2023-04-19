@@ -539,6 +539,7 @@ if rust_protosym is not None:  # pragma: no cover
         Tree,
         Tr,
         ForwardGraph,
+        SubsFunc,
         topological_sort,
         topological_split,
         forward_graph,
