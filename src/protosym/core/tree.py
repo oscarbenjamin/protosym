@@ -36,8 +36,8 @@ class Tree:
     Every :class:`Tree` is either an atomic :class:`Tree` or a compound
     :class:`Tree` having children that are themselves of type :class:`Tree`.
 
-    >>> from protosym.core.atom import AtomType
-    >>> from protosym.core.tree import Tr
+    >>> from protosym.core.atom import AtomType, Atom
+    >>> from protosym.core.tree import Tr, Tree
     >>> Function = AtomType('Function', str)
     >>> Integer = AtomType('Integer', int)
     >>> f = Tr(Function('f'))
@@ -49,10 +49,10 @@ class Tree:
     >>> expr = f(one)
     >>> expr
     Tree(Tr(Function('f')), Tr(Integer(1)))
-    >>> type(one)
-    <class 'protosym.core.tree.Tree'>
-    >>> type(expr)
-    <class 'protosym.core.tree.Tree'>
+    >>> type(one) is Tree
+    True
+    >>> type(expr) is Tree
+    True
     >>> [isinstance(e, Tree) for e in [f, one, f(one)]]
     [True, True, True]
 
@@ -83,8 +83,10 @@ class Tree:
     ()
     >>> expr.children[0].value
     Function('f')
-    >>> type(expr.children[0].value)
-    <class 'protosym.core.atom.Atom'>
+    >>> type(expr.children[0]) is Tree
+    True
+    >>> type(expr.children[0].value) is Atom
+    True
 
     Every :class:`Tree` is either constructed from an :class:`Atom` using
     :class:`Tree` or it is constructed as a compound expressions defined in
@@ -206,7 +208,7 @@ def topological_sort(
 
     Create some functions and symbols and use them to make an expression:
 
-    >>> from protosym.core.tree import funcs_symbols
+    >>> from protosym.core.tree import funcs_symbols, topological_sort
     >>> [f], [x, y] = funcs_symbols(['f'], ['x', 'y'])
     >>> expr = f(f(x, y), f(f(x)))
     >>> print(expr)
@@ -525,3 +527,20 @@ class SubsFunc:
             stack.append(Tree(*children))
 
         return stack[-1]
+
+
+try:
+    import rust_protosym
+except ImportError:
+    rust_protosym = None
+
+if rust_protosym is not None:  # pragma: no cover
+    from rust_protosym import (  # type:ignore # noqa
+        Tree,
+        Tr,
+        ForwardGraph,
+        SubsFunc,
+        topological_sort,
+        topological_split,
+        forward_graph,
+    )

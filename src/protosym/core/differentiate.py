@@ -137,3 +137,12 @@ def chain_rule_forward(
                 diff_term = mul(diff_term, diff_arg)
             terms.append(diff_term)
     return terms
+
+
+try:
+    import rust_protosym
+except ImportError:
+    rust_protosym = None
+
+if rust_protosym is not None:  # pragma: no cover
+    from rust_protosym import DiffProperties, diff_forward  # type:ignore # noqa

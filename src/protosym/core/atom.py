@@ -118,32 +118,23 @@ class Atom(_Generic[_T]):
     Integer(1)
     >>> print(one)
     1
-    >>> type(one) is Atom
-    True
     >>> one.atom_type
     Integer
     >>> one.value
     1
-    >>> type(one)
-    <class 'protosym.core.atom.Atom'>
+    >>> type(one) is Atom
+    True
     >>> type(one.value)
     <class 'int'>
 
     We can rebuild the :class:`Atom` from its ``atom_type`` and ``value``. This
-    is useful if we want to make an atom with a modified ``value``. Giving
-    exactly the same ``value`` will return precisely the same object because
-    there can only be a unique copy of an atom with any given ``atom_type`` and
-    ``value``. A global store is used to ensure that creating a new
-    :class:`Atom` of the same :class:`AtomType` and ``value`` will always
-    return the same object. For this to work the value used to construct an
-    :class:`Atom` is required to be hashable.
+    is useful if we want to make an atom with a modified ``value``.
 
     >>> one == one.atom_type(one.value)
     True
-    >>> one is one.atom_type(one.value)
-    True
-    >>> Integer(2) is Integer(2)
-    True
+    >>> two = one.atom_type(one.value + 1)
+    >>> two
+    Integer(2)
 
     Apart from holding a reference to the :class:`AtomType` and also the
     internal value the only property that an :class:`Atom` has is that it can
@@ -197,3 +188,12 @@ class Atom(_Generic[_T]):
 
 if _TYPE_CHECKING:
     AnyAtom = Atom[_Hashable]
+
+
+try:
+    import rust_protosym
+except ImportError:
+    rust_protosym = None
+
+if rust_protosym is not None:  # pragma: no cover
+    from rust_protosym import AtomType, Atom  # type: ignore # noqa

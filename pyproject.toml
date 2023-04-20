@@ -105,6 +105,7 @@ ignore_missing_imports = true
 module = [
     "sympy",
     "sympy.core.function",
+    "rust_protosym",
 ]
 follow_imports = "skip"
 ignore_missing_imports = true
