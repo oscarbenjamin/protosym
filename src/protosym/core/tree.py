@@ -112,10 +112,10 @@ class Tree:
     )
 
     children: tuple[Tree, ...]
-    """Docstring for children"""
+    """Docstring for children"""  # pragma: no cover
 
     value: AnyAtom
-    """Docstring for value"""
+    """Docstring for value"""  # pragma: no cover
 
     def __new__(cls, *children: Tree) -> Tree:
         """Return a prevously created Tree or a new one."""

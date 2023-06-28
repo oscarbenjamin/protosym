@@ -73,7 +73,7 @@ def test_Transformer() -> None:
 
     # We need a rule for unknown atoms:
     raises(NoEvaluationRuleError, lambda: f2g_eval(expr))
-    f2g_eval.add_atom_generic(lambda atom: atom)  # type: ignore
+    f2g_eval.add_atom_generic(lambda atom: atom)
 
     # We need a rule for unknown heads:
     raises(NoEvaluationRuleError, lambda: f2g_eval(expr))

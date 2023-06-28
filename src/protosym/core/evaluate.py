@@ -262,5 +262,5 @@ class Transformer(Evaluator[Tree]):
 
     def __init__(self) -> None:
         super().__init__()
-        self.add_atom_generic(lambda atom: atom)  # type: ignore
+        self.add_atom_generic(lambda atom: atom)
         self.add_op_generic(lambda head, args: head(*args))
