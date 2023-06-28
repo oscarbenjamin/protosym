@@ -123,7 +123,7 @@ def safety(session: Session) -> None:
         "bare",
         f"--file={requirements}",
         "--ignore=51457",  # https://github.com/pytest-dev/py/issues/287
-        "--ignore=51549",  # https://github.com/mpmath/mpmath/issues/548
+        "--ignore=58755",  # https://github.com/mpmath/mpmath/issues/548
     )
 
 
