@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from functools import reduce
 from functools import wraps
+from operator import add
+from operator import mul
 from typing import Any
 from typing import Callable
 from typing import Optional
@@ -17,6 +19,7 @@ from protosym.core.sym import HeadOp
 from protosym.core.sym import HeadRule
 from protosym.core.sym import Sym
 from protosym.core.sym import SymDifferentiator
+from protosym.core.sym import SymRingOps
 from protosym.core.tree import SubsFunc
 from protosym.core.tree import topological_sort
 from protosym.simplecas.exceptions import ExpressifyError
@@ -425,26 +428,50 @@ class Expr(Sym):
         """
         return len(topological_sort(self.rep))
 
-    def diff(self, sym: Expr, ntimes: int = 1) -> Expr:
+    def flatten(self) -> Expr:
+        """Apply the usual simplification rules for Add, Mul and Pow."""
+        return ring_ops(self)
+
+    def diff(self, sym: Expr, ntimes: int = 1, flatten: bool = True) -> Expr:
         """Differentiate ``expr`` wrt ``sym`` (``ntimes`` times).
 
         >>> from protosym.simplecas import x, sin
         >>> sin(x).diff(x)
         cos(x)
 
-        Currently no simplification is done which can lead to some strange
-        looking output:
-
-        >>> sin(x).diff(x, 4)
-        (-1*(-1*sin(x)))
-
         Large expressions can be generated and differentiated efficiently:
 
         >>> expr = sin(sin(sin(sin(sin(x))))).diff(x, 10)
         >>> expr.count_ops_graph()
-        1552
+        20427
         >>> expr.count_ops_tree()
+        597557
+
+        By default ``flatten`` is called during the calculation of derivatives
+        but that can be disabled by passing ``flatten=False`` which gives
+        unsimplified derivative expressions:
+
+        >>> sin(x).diff(x, 4)
+        sin(x)
+        >>> sin(x).diff(x, 4, flatten=False)
+        (-1*(-1*sin(x)))
+
+        Although ``flatten`` makes simple expressions look simpler it can also
+        make the graph structure of large expressions more complicated:
+
+        >>> expr = sin(sin(sin(sin(sin(x)))))
+        >>> expr.diff(x, 10, flatten=False).count_ops_graph()
+        1552
+        >>> expr.diff(x, 10, flatten=True).count_ops_graph()
+        20427
+        >>> expr.diff(x, 10, flatten=False).count_ops_tree()
         893621974
+        >>> expr.diff(x, 10, flatten=True).count_ops_tree()
+        597557
+
+        Note that the smallest operation count here arises when not flattening
+        and when using the graph representation rather than the tree
+        representation.
 
         Differentiation rules for new functions can be added as needed:
 
@@ -473,6 +500,8 @@ class Expr(Sym):
         deriv = self
         for _ in range(ntimes):
             deriv = diff(deriv, sym)
+            if flatten:
+                deriv = deriv.flatten()
         return deriv
 
     def bin_expand(self) -> Expr:
@@ -581,6 +610,12 @@ sum_plus_one = HeadOp[int](lambda _, counts: 1 + sum(counts))
 count_ops_tree = Expr.new_evaluator("count_ops_tree", int)
 count_ops_tree[AtomRule[a]] = one_func(a)
 count_ops_tree[HeadRule(a, b)] = sum_plus_one(a, b)
+
+#
+# Basic ring operations for simplifying Add, Mul, Pow.
+#
+
+ring_ops = SymRingOps(Expr, Integer, iadd=add, imul=mul, add=Add, mul=Mul, pow=Pow)
 
 #
 # Differentiation.
