@@ -30,6 +30,7 @@ from protosym.simplecas.exceptions import LLVMNotImplementedError
 
 
 two = Integer(2)
+z = Symbol("z")
 
 
 def test_simplecas_types() -> None:
@@ -276,12 +277,57 @@ def test_simplecas_differentation() -> None:
     assert x.diff(x) == one
     assert sin(1).diff(x) == zero
     assert (2 * sin(x)).diff(x) == 2 * cos(x)
-    assert (x**3).diff(x) == 3 * x ** (Add(3, -1))
+    assert (x**3).diff(x) == 3 * x**2
     assert sin(x).diff(x) == cos(x)
     assert cos(x).diff(x) == -sin(x)
     assert (sin(x) + cos(x)).diff(x) == cos(x) + -1 * sin(x)
-    assert (sin(x) ** 2).diff(x) == 2 * sin(x) ** Add(2, -1) * cos(x)
-    assert (x * sin(x)).diff(x) == 1 * sin(x) + x * cos(x)
+    assert (sin(x) ** 2).diff(x) == Mul(2, sin(x), cos(x))
+    assert (x * sin(x)).diff(x) == sin(x) + x * cos(x)
+    assert sin(x).diff(x, 4) == sin(x)
+    assert sin(x).diff(x, 4, flatten=False) == -1 * (-1 * sin(x))
+
+
+def test_simplecas_flatten() -> None:
+    """Test flattening simplecas expressions."""
+    assert x**2 * x**3 != x**5
+    assert (x**2 * x**3).flatten() == x**5
+    assert x + x + x != 3 * x
+    assert (x + x + x).flatten() == 3 * x
+    assert x + y + z != Add(x, y, z)
+    assert (x + y + z).flatten() == Add(x, y, z)
+    assert x - x != zero
+    assert (x - x).flatten() == zero
+    assert x**0 != one
+    assert (x**0).flatten() == one
+    assert x**1 != x
+    assert (x**1).flatten() == x
+    assert 1 * x != x
+    assert (1 * x).flatten() == x
+    assert 0 * x != zero
+    assert (0 * x).flatten() == zero
+    assert 0 + x != x
+    assert (0 + x).flatten() == x
+    assert x + 1 + 2 != 3 + x
+    assert (x + 1 + 2).flatten() == 3 + x
+    assert x * 2 * 3 != 6 * x
+    assert (x * 2 * 3).flatten() == 6 * x
+    assert 2 * x + 3 * x != 5 * x
+    assert (2 * x + 3 * x).flatten() == 5 * x
+    assert 2 * x * y + 3 * x * y != Mul(5, x, y)
+    assert (2 * x * y + 3 * x * y).flatten() == Mul(5, x, y)
+    assert (x**2) ** 3 != x**6
+    assert ((x**2) ** 3).flatten() == x**6
+    # Don't flatten this:
+    assert ((x**2) ** y).flatten() == (x**2) ** y != x ** (2 * y)
+    # Do flatten this:
+    assert ((x**y) ** 2) != Pow(x, 2 * y)
+    assert ((x**y) ** 2).flatten() == x ** (2 * y)
+    # Don't flatten this:
+    assert ((x**y) * x**2).flatten() == x**y * x**2
+    assert ((x**y) * x**2).flatten() != x ** (2 + y)
+    # This flatten is undesirable (x could be zero):
+    assert x * (1 / x) != one
+    assert (x * (1 / x)).flatten() == one
 
 
 def test_simplecas_differentiation_rules() -> None:
