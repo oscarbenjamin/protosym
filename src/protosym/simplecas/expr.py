@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from functools import reduce
 from functools import wraps
+from operator import add
+from operator import mul
 from typing import Any
 from typing import Callable
 from typing import Optional
@@ -17,6 +19,7 @@ from protosym.core.sym import HeadOp
 from protosym.core.sym import HeadRule
 from protosym.core.sym import Sym
 from protosym.core.sym import SymDifferentiator
+from protosym.core.sym import SymRingOps
 from protosym.core.tree import SubsFunc
 from protosym.core.tree import topological_sort
 from protosym.simplecas.exceptions import ExpressifyError
@@ -425,6 +428,10 @@ class Expr(Sym):
         """
         return len(topological_sort(self.rep))
 
+    def flatten(self) -> Expr:
+        """Apply the usual simplification rules for Add, Mul and Pow."""
+        return ring_ops(self)
+
     def diff(self, sym: Expr, ntimes: int = 1) -> Expr:
         """Differentiate ``expr`` wrt ``sym`` (``ntimes`` times).
 
@@ -472,7 +479,7 @@ class Expr(Sym):
         """
         deriv = self
         for _ in range(ntimes):
-            deriv = diff(deriv, sym)
+            deriv = diff(deriv, sym).flatten()
         return deriv
 
     def bin_expand(self) -> Expr:
@@ -581,6 +588,12 @@ sum_plus_one = HeadOp[int](lambda _, counts: 1 + sum(counts))
 count_ops_tree = Expr.new_evaluator("count_ops_tree", int)
 count_ops_tree[AtomRule[a]] = one_func(a)
 count_ops_tree[HeadRule(a, b)] = sum_plus_one(a, b)
+
+#
+# Basic ring operations for simplifying Add, Mul, Pow.
+#
+
+ring_ops = SymRingOps(Expr, Integer, iadd=add, imul=mul, add=Add, mul=Mul, pow=Pow)
 
 #
 # Differentiation.

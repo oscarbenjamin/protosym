@@ -22,6 +22,7 @@ from weakref import WeakValueDictionary as _WeakDict
 from protosym.core.atom import AtomType
 from protosym.core.differentiate import diff_forward
 from protosym.core.differentiate import DiffProperties
+from protosym.core.differentiate import RingOps
 from protosym.core.evaluate import Evaluator
 from protosym.core.exceptions import BadRuleError
 from protosym.core.tree import SubsFunc
@@ -615,6 +616,26 @@ class SymEvaluator(Generic[T_sym, T_val]):
         if values is not None:
             values_rep = {e.rep: v for e, v in values.items()}
         return self.evaluator(expr.rep, values_rep)
+
+
+class SymRingOps(Generic[T_sym]):
+    """Representation of ring operations."""
+
+    def __init__(
+        self,
+        new_sym: Type[T_sym],
+        integer: SymAtomType[T_sym, int],
+        iadd: Callable[[int, int], int],
+        imul: Callable[[int, int], int],
+        add: Sym,
+        mul: Sym,
+        pow: Sym,
+    ):
+        self.new_sym = new_sym
+        self.ringops = RingOps(integer.atom_type, iadd, imul, add.rep, mul.rep, pow.rep)
+
+    def __call__(self, expr: T_sym) -> T_sym:
+        return self.new_sym(self.ringops.flatten(expr.rep))
 
 
 class SymDifferentiator(Generic[T_sym]):

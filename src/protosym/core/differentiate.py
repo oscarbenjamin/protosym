@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from functools import reduce
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 from protosym.core.tree import forward_graph
+from protosym.core.tree import Tr
 
 
 __all__ = [
@@ -20,9 +22,161 @@ __all__ = [
 
 
 if _TYPE_CHECKING:
+    from typing import Callable, Sequence
+    from protosym.core.atom import AtomType
     from protosym.core.tree import Tree, SubsFunc
 
     _DiffRules = dict[tuple[Tree, int], SubsFunc]
+
+
+@dataclass(frozen=True)
+class RingOps:
+    """Collection of ring operations."""
+
+    Integer: AtomType[int]
+    iadd: Callable[[int, int], int]
+    imul: Callable[[int, int], int]
+    add: Tree
+    mul: Tree
+    pow: Tree
+
+    def split_integers(self, args: Sequence[Tree]) -> tuple[list[int], list[Tree]]:
+        integers: list[int] = []
+        new_args: list[Tree] = []
+        for arg in args:
+            if not arg.children and (atom := arg.value).atom_type == self.Integer:
+                integers.append(atom.value)
+            else:
+                new_args.append(arg)
+        return integers, new_args
+
+    def flatten_add(self, args: list[Tree]) -> Tree:
+        integers: list[int] = []
+        new_args: list[Tree] = []
+
+        # Associativity of add
+        for arg in args:
+            if arg.children and arg.children[0] == self.add:
+                new_args.extend(arg.children[1:])
+            else:
+                new_args.append(arg)
+
+        # Collect integer part
+        new_args2: list[Tree] = []
+        for arg in new_args:
+            if not arg.children and (atom := arg.value).atom_type == self.Integer:
+                integers.append(atom.value)  # type:ignore
+            else:
+                new_args2.append(arg)
+
+        totals = {}
+        for arg in new_args2:
+            if arg.children and arg.children[0] == self.mul:
+                intfacs, factors = self.split_integers(arg.children[1:])
+                fac = self.mul(*factors)
+                integer = reduce(self.imul, intfacs, 1)
+                if fac not in totals:
+                    totals[fac] = 0
+                totals[fac] += integer
+            else:
+                if arg not in totals:
+                    totals[arg] = 0
+                totals[arg] += 1
+
+        new_args3: list[Tree] = []
+        for fac, c in totals.items():
+            if c == 0:
+                continue
+            elif c == 1:
+                new_args3.append(fac)
+            else:
+                new_args3.append(self.mul(Tr(self.Integer(c)), *fac.children[1:]))
+
+        int_value = reduce(self.iadd, integers, 0)
+
+        if int_value:
+            new_args3.insert(0, Tr(self.Integer(int_value)))
+
+        if not new_args3:
+            expr = Tr(self.Integer(0))
+        elif len(new_args3) == 1:
+            [expr] = new_args3
+        else:
+            expr = self.add(*new_args3)
+
+        return expr
+
+    def flatten_mul(self, args: list[Tree]) -> Tree:
+        integers: list[int] = []
+        new_args: list[Tree] = []
+
+        for arg in args:
+            if arg.children and arg.children[0] == self.mul:
+                new_args.extend(arg.children[1:])
+            else:
+                new_args.append(arg)
+
+        new_args2: list[Tree] = []
+        for arg in new_args:
+            if not arg.children and (atom := arg.value).atom_type == self.Integer:
+                integers.append(atom.value)  # type:ignore
+            else:
+                new_args2.append(arg)
+
+        int_value = reduce(self.imul, integers, 1)
+
+        if int_value != 1:
+            new_args2.insert(0, Tr(self.Integer(int_value)))
+
+        if not new_args2:
+            expr = Tr(self.Integer(1))
+        elif len(new_args2) == 1:
+            [expr] = new_args2
+        else:
+            expr = self.mul(*new_args2)
+
+        return expr
+
+    def flatten_pow(self, args: list[Tree]) -> Tree:
+        base, exponent = args
+        if exponent.value == self.Integer(0):
+            expr = Tr(self.Integer(1))
+        elif exponent.value == self.Integer(1):
+            expr = base
+        else:
+            expr = self.pow(base, exponent)
+        return expr
+
+    def flatten(self, expr: Tree) -> Tree:
+        """Apply the standard ring simplification rules.
+
+        Identity (addition): :math:`x + 0 = x`
+        Identity (multiplication): :math:`x * 1 = x`
+        Associativity (addition): :math:`(x + y) + z = x + (y + z)`
+        Associativity (multiplication): :math:`(x * y) * z = x * (y * z)`
+        Commutativity (addition): :math:`x + y = y + x`
+        Commutativity (multiplication): :math:`x * y = y * x`
+        Add to Mul: :math:`2*x + 3*x = 5*x`
+        Mul to Pow: :math:`x^2 * x^3 = x^5`
+        """
+        graph = forward_graph(expr)
+        stack = list(graph.atoms)
+        for func, indices in graph.operations:
+
+            args = [stack[i] for i in indices]
+
+            if func == self.add:
+                expr = self.flatten_add(args)
+            elif func == self.mul:
+                expr = self.flatten_mul(args)
+            elif func == self.pow and len(args) == 2:
+                expr = self.flatten_pow(args)
+            else:
+                expr = func(*args)
+
+            stack.append(expr)
+
+        return stack[-1]
 
 
 @dataclass(frozen=True)
