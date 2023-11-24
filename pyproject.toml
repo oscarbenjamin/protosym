@@ -1,3 +1,57 @@
+[project]
+name = "protosym"
+version = "0.0.2"
+requires-python = ">=3.8"
+license = "BSD-3-clause"
+description = "ProtoSym"
+readme = "README.rst"
+authors = [
+    { name = "Oscar Benjamin", email = "oscar.j.benjamin@gmail.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.optional-dependencies]
+all = [
+    "numpy",
+    "sympy",
+    "llvmlite",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "src",
+    "docs",
+    "tests",
+    "benchmarks",
+
+    "requirements-*.txt",
+
+    "noxfile.py",
+    "quicktest.sh",
+
+    "README.rst",
+    "CONTRIBUTING.rst",
+    "CODE_OF_CONDUCT.rst",
+    "LICENSE.rst",
+
+    "pyproject.toml",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/protosym",
+]
+
 [tool.poetry]
 name = "protosym"
 version = "0.0.2"
@@ -109,7 +163,3 @@ module = [
 ]
 follow_imports = "skip"
 ignore_missing_imports = true
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"

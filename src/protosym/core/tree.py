@@ -241,6 +241,7 @@ def topological_sort(
     Tree: The expression class that this function operates on.
     topological_split: Splits the sort into atoms, heads and nodes.
     """
+
     #
     # We use a stack here rather than recursion so that there is no limit on
     # the recursion depth. Otherwise though this is really just the same as
@@ -459,7 +460,6 @@ class SubsFunc:
     operations: list[list[int]]
 
     def __new__(cls, expr: Tree, args: list[Tree]) -> SubsFunc:
-
         # A topological sort but exluding the args because they will be
         # replaced in the substitution anyway.
         subexpressions = topological_sort(expr, heads=True, exclude=set(args))

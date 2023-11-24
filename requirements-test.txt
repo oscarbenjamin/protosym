@@ -1,0 +1,8 @@
+sympy
+llvmlite
+numpy
+pytest
+pytest-cov
+coverage[toml]
+pygments
+xdoctest[colors]
