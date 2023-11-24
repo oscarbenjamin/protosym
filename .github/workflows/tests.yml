@@ -16,8 +16,7 @@ jobs:
           - { python-version: 3.9, os: ubuntu-latest, session: "tests" }
           - { python-version: 3.8, os: ubuntu-latest, session: "tests" }
           - { python-version: 3.9, os: ubuntu-latest, session: "pre-commit" }
-          - { python-version: 3.9, os: ubuntu-latest, session: "safety" }
-          - { python-version: 3.9, os: ubuntu-latest, session: "xdoctest" }
+          - { python-version: 3.9, os: ubuntu-latest, session: "doctest" }
           - { python-version: 3.9, os: ubuntu-latest, session: "docs-build" }
 
     env:
@@ -32,19 +31,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Upgrade pip
-        run: |
-          pip install --constraint=.github/workflows/constraints.txt pip
-          pip --version
-
-      - name: Install Poetry
-        run: |
-          pip install --constraint=.github/workflows/constraints.txt poetry
-          poetry --version
-
       - name: Install Nox
         run: |
-          pip install --constraint=.github/workflows/constraints.txt nox nox-poetry
+          pip install --upgrade pip
+          pip install nox
           nox --version
 
       - name: Compute pre-commit cache key
@@ -103,19 +93,10 @@ jobs:
         with:
           python-version: 3.9
 
-      - name: Upgrade pip
-        run: |
-          pip install --constraint=.github/workflows/constraints.txt pip
-          pip --version
-
-      - name: Install Poetry
-        run: |
-          pip install --constraint=.github/workflows/constraints.txt poetry
-          poetry --version
-
       - name: Install Nox
         run: |
-          pip install --constraint=.github/workflows/constraints.txt nox nox-poetry
+          pip install --upgrade pip
+          pip install nox
           nox --version
 
       - name: Download coverage data

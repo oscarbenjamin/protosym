@@ -14,8 +14,8 @@ if [ "$1" = "--rs" ]; then
     cd -
 fi
 
-poetry run pre-commit run --all-files
-poetry run mypy src tests
-poetry run python -m xdoctest --quiet protosym
-poetry run pytest --cov=protosym
-poetry run coverage html
+pre-commit run --all-files
+mypy src tests
+python -m xdoctest --quiet protosym
+pytest --cov=protosym
+coverage html
