@@ -46,7 +46,7 @@ jobs:
         run: |
           hatch version dev &&
           version=$(hatch version) &&
-          hatch version $version.dev.$(date +%s)
+          hatch version $version$(date +%s)
 
       - name: Build package
         run: |
