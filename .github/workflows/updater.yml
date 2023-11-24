@@ -15,10 +15,11 @@ jobs:
           node-version: '16.x'
       - name: Update dependencies
         run: |
-          pip install pip-upgrader poetry-plugin-up
-          pip-upgrade -p all --skip-package-installation docs/requirements.txt
-          pip-upgrade -p all --skip-package-installation .github/workflows/constraints.txt
-          poetry up --no-install --latest
+          pip install pip-upgrader
+          pip-upgrade -p all --skip-package-installation requirements-docs.txt
+          pip-upgrade -p all --skip-package-installation requirements-test.txt
+          pip-upgrade -p all --skip-package-installation requirements-lint.txt
+          pip-upgrade -p all --skip-package-installation requirements-all.txt
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5.0.2
         with:
