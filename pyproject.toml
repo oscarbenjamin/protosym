@@ -48,6 +48,7 @@ include = [
     "LICENSE.rst",
 
     "pyproject.toml",
+    "VERSION.txt",
 ]
 
 [tool.hatch.build.targets.wheel]
