@@ -86,7 +86,6 @@ pyright-check = "pyright {args:src tests}"
 dependencies = [
     "ruff",
     "black",
-    "darglint",
     "pre-commit",
     "pre-commit-hooks",
 ]

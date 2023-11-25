@@ -1,5 +1,4 @@
 ruff
 black
-darglint
 pre-commit
 pre-commit-hooks
