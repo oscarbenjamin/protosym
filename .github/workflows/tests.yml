@@ -6,21 +6,12 @@ on:
 
 jobs:
   tests:
-    name: ${{ matrix.session }} ${{ matrix.python-version }} / ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Python ${{ matrix.python-version }} checks
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { python-version: 3.9, os: ubuntu-latest, session: "mypy" }
-          - { python-version: 3.9, os: ubuntu-latest, session: "tests" }
-          - { python-version: 3.8, os: ubuntu-latest, session: "tests" }
-          - { python-version: 3.9, os: ubuntu-latest, session: "pre-commit" }
-          - { python-version: 3.9, os: ubuntu-latest, session: "doctest" }
-          - { python-version: 3.9, os: ubuntu-latest, session: "docs-build" }
-
-    env:
-      NOXSESSION: ${{ matrix.session }}
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
       - name: Check out the repository
@@ -31,41 +22,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Nox
+      - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install nox
-          nox --version
+          pip install -r requirements-all.txt
+          pip install .
 
-      - name: Compute pre-commit cache key
-        if: matrix.session == 'pre-commit'
-        id: pre-commit-cache
-        shell: python
+      - name: Run checks
         run: |
-          import hashlib
-          import sys
-          import os
-
-          python = "py{}.{}".format(*sys.version_info[:2])
-          payload = sys.version.encode() + sys.executable.encode()
-          digest = hashlib.sha256(payload).hexdigest()
-          result = "${{ runner.os }}-{}-{}-pre-commit".format(python, digest[:8])
-
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as fout:
-              fout.write("result={}\n".format(result))
-
-      - name: Restore pre-commit cache
-        uses: actions/cache@v3.3.2
-        if: matrix.session == 'pre-commit'
-        with:
-          path: ~/.cache/pre-commit
-          key: ${{ steps.pre-commit-cache.outputs.result }}-${{ hashFiles('.pre-commit-config.yaml') }}
-          restore-keys: |
-            ${{ steps.pre-commit-cache.outputs.result }}-
-
-      - name: Run Nox
-        run: |
-          nox --force-color --python=${{ matrix.python-version }}
+          ./checks.sh
 
       - name: Upload coverage data
         if: always() && matrix.session == 'tests'
@@ -80,37 +45,3 @@ jobs:
         with:
           name: docs
           path: docs/_build
-
-  coverage:
-    runs-on: ubuntu-latest
-    needs: tests
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v4.1.0
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4.7.0
-        with:
-          python-version: 3.9
-
-      - name: Install Nox
-        run: |
-          pip install --upgrade pip
-          pip install nox
-          nox --version
-
-      - name: Download coverage data
-        uses: actions/download-artifact@v3.0.2
-        with:
-          name: coverage-data
-
-      - name: Combine coverage data and display human readable report
-        run: |
-          nox --force-color --session=coverage
-
-      - name: Create coverage report
-        run: |
-          nox --force-color --session=coverage -- xml
-
-      - name: Upload coverage report
-        uses: codecov/codecov-action@v3.1.4
