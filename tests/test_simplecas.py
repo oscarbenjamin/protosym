@@ -1,6 +1,8 @@
 from pytest import raises
 from pytest import skip
 
+from .utils import requires_llvmlite
+from .utils import requires_numpy
 from protosym.core.sym import SymAtomType
 from protosym.simplecas import a
 from protosym.simplecas import Add
@@ -173,7 +175,7 @@ def test_simplecas_to_sympy() -> None:
     try:
         import sympy
     except ImportError:
-        skip("SymPy not installed")
+        raise skip("SymPy not installed") from None
 
     x_sym = sympy.Symbol("x")
     sinx_sym = sympy.sin(x_sym)
@@ -224,7 +226,7 @@ def test_simplecas_to_sympy_matrix() -> None:
     try:
         import sympy
     except ImportError:
-        skip("SymPy not installed")
+        raise skip("SymPy not installed") from None
 
     x_sym = sympy.Symbol("x")
     sinx_sym = sympy.sin(x_sym)
@@ -407,6 +409,7 @@ ret double %".4"
     raises(LLVMNotImplementedError, lambda: f(x).to_llvm_ir([]))
 
 
+@requires_llvmlite
 def test_simplecas_lambdify_llvm() -> None:
     """Test simplecas lambdify function for a simple expression."""
     expr1 = sin(cos(x)) * x**2 + 1
@@ -415,6 +418,8 @@ def test_simplecas_lambdify_llvm() -> None:
     assert f(1) == f(1.0) == val1
 
 
+@requires_numpy
+@requires_llvmlite
 def test_simplecas_lambdify_llvm_mat() -> None:
     """Test simplecas lambdify for a simple matrix."""
     import numpy as np

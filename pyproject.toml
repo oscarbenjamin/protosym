@@ -56,6 +56,81 @@ packages = [
     "src/protosym",
 ]
 
+[tool.hatch.envs.test]
+dependencies = [
+    "pytest",
+    "xdoctest[colors]",
+    "pytest-cov",
+    "coverage[toml]",
+    "sympy",
+    "numpy",
+    "llvmlite",
+]
+
+[tool.hatch.envs.test.scripts]
+test = "pytest {args:tests}"
+doctest = "xdoctest --quiet {args:protosym all}"
+coverage = "pytest --cov=protosym --cov-report=html {args:tests}"
+
+[tool.hatch.envs.types]
+dependencies = [
+    "mypy",
+    "pyright",
+]
+
+[tool.hatch.envs.types.scripts]
+mypy-check = "mypy {args:src tests}"
+pyright-check = "pyright {args:src tests}"
+
+[tool.hatch.envs.lint]
+dependencies = [
+    "black",
+    "darglint",
+    "flake8",
+    "flake8-bandit",
+    "flake8-bugbear",
+    "flake8-docstrings",
+    "flake8-rst-docstrings",
+    "flake8-type-checking",
+    "pep8-naming",
+    "pre-commit",
+    "pre-commit-hooks",
+    "reorder-python-imports",
+]
+
+[tool.hatch.envs.pre-commit.scripts]
+run = "pre-commit run {args:--all-files --show-diff-on-failure}"
+
+[tool.hatch.envs.docs]
+dependencies = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "sphinx-autobuild",
+]
+
+[tool.hatch.envs.docs.scripts]
+build = "sphinx-build -b html docs docs/_build"
+serve = "sphinx-autobuild --open-browser --watch src --watch docs docs docs/_build"
+
+[tool.hatch.envs.matrix]
+dependencies = [
+    "pytest",
+    "xdoctest[colors]",
+]
+
+[[tool.hatch.envs.matrix.matrix]]
+python = [
+    "3.8",
+    "3.9",
+    "3.10",
+    "3.11",
+    "3.12",
+]
+
+[tool.hatch.envs.matrix.scripts]
+test = "pytest {args:tests}"
+doctest = "xdoctest --silent {args:protosym all}"
+
 [tool.pytest.ini_options]
 testpaths = [
     "tests",
@@ -90,6 +165,7 @@ module = [
     'llvmlite',
     'llvmlite.binding',
     'py',
+    'pytest',
     'symengine',
     'numpy',
 ]
@@ -103,3 +179,7 @@ module = [
 ]
 follow_imports = "skip"
 ignore_missing_imports = true
+
+[tool.pyright]
+include = ["src", "tests"]
+reportMissingImports = false

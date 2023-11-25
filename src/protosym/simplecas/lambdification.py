@@ -93,6 +93,7 @@ def _to_llvm_f64(symargs: list[Tree], expression: Tree) -> str:
 def lambdify(args: list[Expr], expression: Expr | Matrix) -> Callable[..., Any]:
     """Turn ``expression`` into an efficient callable function of ``args``.
 
+    >>> # xdoctest: +REQUIRES(module:llvmlite)
     >>> from protosym.simplecas import Symbol, sin, lambdify
     >>> x = Symbol('x')
     >>> f = lambdify([x], sin(x))
@@ -226,6 +227,7 @@ def _to_llvm_f64_matrix(symargs: list[Tree], mat: Matrix) -> str:  # noqa [C901]
 def _lambdify_llvm_matrix(args: list[Tree], mat: Matrix) -> Callable[..., Any]:
     """Lambdify a matrix.
 
+    >>> # xdoctest: +REQUIRES(module:llvmlite)
     >>> from protosym.simplecas import lambdify, Matrix
     >>> f = lambdify([], Matrix([[1, 2], [3, 4]]))
     >>> f()

@@ -290,6 +290,7 @@ class Expr(Sym):
         >>> type(expr_protosym)
         <class 'protosym.simplecas.expr.Expr'>
 
+        >>> # xdoctest: +REQUIRES(module:sympy)
         >>> expr_sympy = expr_protosym.to_sympy()
         >>> expr_sympy
         sin(x)
@@ -309,6 +310,7 @@ class Expr(Sym):
     def from_sympy(cls, expr: Any) -> Expr:
         """Create a simplecas ``Expr`` from a SymPy expression.
 
+        >>> # xdoctest: +REQUIRES(module:sympy)
         >>> from sympy import sin, Symbol
         >>> x = Symbol('x')
         >>> expr_sympy = sin(x)

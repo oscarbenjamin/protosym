@@ -93,6 +93,7 @@ dependencies and run the ``quicktest.sh`` script:
 .. code:: console
 
    $ pip install -r requirements-all.txt
+   $ pip install -e .
    $ ./quicktest.sh
 
 See the ``quicktest.sh`` script for how to run individual commands.

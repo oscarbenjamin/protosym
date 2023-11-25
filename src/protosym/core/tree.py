@@ -175,7 +175,9 @@ class Tree:
 
 
 # Convenient shorthand for creating atoms
-Tr = Tree.atom
+def Tr(value: AnyAtom) -> Tree:
+    """Create a Tree representing an atomic expression."""
+    return Tree.atom(value)
 
 
 def funcs_symbols(
