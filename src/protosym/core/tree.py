@@ -182,7 +182,7 @@ def Tr(value: AnyAtom) -> Tree:
 def funcs_symbols(
     function_names: list[str], symbol_names: list[str]
 ) -> tuple[list[Tree], list[Tree]]:
-    """Convenience function to make some functions and symbols.
+    """Create functions and symbols for use in examples.
 
     >>> from protosym.core.tree import funcs_symbols
     >>> [f, g], [x, y] = funcs_symbols(['f', 'g'], ['x', 'y'])
@@ -192,8 +192,8 @@ def funcs_symbols(
 
     This is mainly just here to reduce boilerplate in other docstrings.
     """
-    Function = AtomType("Function", str)  # noqa
-    Symbol = AtomType("Symbol", str)  # noqa
+    Function = AtomType("Function", str)
+    Symbol = AtomType("Symbol", str)
     functions = [Tr(Function(name)) for name in function_names]
     symbols = [Tr(Symbol(name)) for name in symbol_names]
     return functions, symbols
@@ -237,8 +237,7 @@ def topological_sort(
     True
 
     See Also
-    ========
-
+    --------
     Tree: The expression class that this function operates on.
     topological_split: Splits the sort into atoms, heads and nodes.
     """
@@ -316,8 +315,7 @@ def topological_split(
     after all of its children.
 
     See Also
-    ========
-
+    --------
     Tree: The expression class that this operates on.
     topological_sort: Topological sort as a list of all subexpressions.
     """
@@ -378,8 +376,7 @@ def forward_graph(expr: Tree) -> ForwardGraph:
     True
 
     See Also
-    ========
-
+    --------
     topological_sort
     ForwardGraph: The class of the object returned.
     """
@@ -405,8 +402,7 @@ class ForwardGraph:
     """Representation of an expression as a forward graph.
 
     See Also
-    ========
-
+    --------
     Tree: Representation of an expression as a tree.
     """
 

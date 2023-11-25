@@ -55,8 +55,7 @@ def expressify(obj: Any) -> Expr:
     True
 
     Notes
-    =====
-
+    -----
     Currently :func:`expressify` only supports converting ``int`` to
     :class:`Expr`. Otherwise any :class:`Expr` is returned as is. It will be
     extended as further possible types are added to :mod:`protosym.simplecas`.
@@ -78,7 +77,7 @@ def expressify(obj: Any) -> Expr:
 
 
 def expressify_other(method: ExprBinOp) -> ExpressifyBinOp:
-    """Decorator to call ``expressify`` on operands in ``__add__`` etc."""
+    """Call ``expressify`` on operands in ``__add__`` etc."""
 
     @wraps(method)
     def expressify_method(self: Expr, other: Expressifiable) -> Expr:
@@ -145,8 +144,7 @@ class Expr(Sym):
     The :class:`Expr` class has many methods some of which are listed below.
 
     See Also
-    ========
-
+    --------
     diff
     eval_f64
     eval_latex
@@ -166,11 +164,11 @@ class Expr(Sym):
         return self.eval_repr()
 
     def _repr_latex_(self) -> str:
-        """Latex hook for IPython."""
+        """Support IPython's LaTeX hook."""
         return f"${self.eval_latex()}$"
 
     def _sympy_(self) -> Any:
-        """Hook for SymPy's ``sympify`` function."""
+        """Support SymPy's ``sympify`` function."""
         return self.to_sympy()
 
     def __call__(self, *args: Expressifiable) -> Expr:
@@ -297,8 +295,7 @@ class Expr(Sym):
         sin
 
         See Also
-        ========
-
+        --------
         from_sympy
         """
         from protosym.simplecas.sympy_conversions import to_sympy
@@ -326,8 +323,7 @@ class Expr(Sym):
         <class 'protosym.simplecas.expr.Expr'>
 
         See Also
-        ========
-
+        --------
         to_sympy
         """
         from protosym.simplecas.sympy_conversions import from_sympy
@@ -420,8 +416,7 @@ class Expr(Sym):
         representation both in terms of memory and also computing time.
 
         See Also
-        ========
-
+        --------
         count_ops_tree
         """
         return len(topological_sort(self.rep))
@@ -457,18 +452,17 @@ class Expr(Sym):
         ((1 + tan(tan(x))**2)*(1 + tan(x)**2))
 
         Notes
-        =====
-
+        -----
         Currently the differentiation algorithm is based on *forward
         accumulation* which is a common technique in the automatic
         differentiation literature.
 
         See Also
-        ========
+        --------
+        diff_forward
 
         References
-        ==========
-
+        ----------
         https://en.wikipedia.org/wiki/Automatic_differentiation
         """
         deriv = self
@@ -520,8 +514,7 @@ class ExprFunction:
     """Function that rebuilds a symbolic expression.
 
     See Also
-    ========
-
+    --------
     Expr.as_function: the usual way to create an :class:`ExprFunction`.
     """
 

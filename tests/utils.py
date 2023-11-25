@@ -14,7 +14,7 @@ from functools import wraps
 
 
 def requires(module_name: str) -> Callable[[Callable[..., None]], Callable[..., None]]:
-    """Decorator to skip tests if module is not available."""
+    """Return a decorator to skip tests if module is not available."""
 
     def decorator(func: Callable[..., None]) -> Callable[..., None]:
         @wraps(func)

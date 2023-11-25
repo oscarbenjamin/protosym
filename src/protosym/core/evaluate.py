@@ -48,8 +48,7 @@ class Evaluator(Generic[_T]):
     """Objects that evaluate expressions.
 
     Examples
-    ========
-
+    --------
     First define some symbols and functions:
 
     >>> import math
@@ -212,8 +211,7 @@ class Transformer(Evaluator[Tree]):
     operations that have no associated rules leaving the expression unmodified.
 
     Examples
-    ========
-
+    --------
     We first import the pieces and define some functions and symbols.
 
     >>> from protosym.core.tree import Tree, funcs_symbols

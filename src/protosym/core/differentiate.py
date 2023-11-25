@@ -50,9 +50,9 @@ def diff_forward(
     sym: Tree,
     prop: DiffProperties,
 ) -> Tree:
-    """Derivative of expression wrt sym.
+    """Compute the derivative of ``expression`` wrt ``sym``.
 
-    Uses forward accumulation algorithm.
+    Uses the forward accumulation algorithm.
     """
     one = prop.one
     zero = prop.zero

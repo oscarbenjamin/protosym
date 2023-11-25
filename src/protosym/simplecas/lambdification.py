@@ -46,7 +46,7 @@ def _to_llvm_f64(symargs: list[Tree], expression: Tree) -> str:
 
     graph = forward_graph(expression)
 
-    argnames = {s: f'%"{s}"' for s in symargs}  # noqa
+    argnames = {s: f'%"{s}"' for s in symargs}
 
     identifiers = []
     for a in graph.atoms:
@@ -162,7 +162,7 @@ def _to_llvm_f64_matrix(symargs: list[Tree], mat: Matrix) -> str:  # noqa [C901]
 
     graph = forward_graph(elements_graph)
 
-    argnames = {s: f'%"{s}"' for s in symargs}  # noqa
+    argnames = {s: f'%"{s}"' for s in symargs}
 
     identifiers = []
     for a in graph.atoms:

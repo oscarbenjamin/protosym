@@ -27,7 +27,7 @@ class Matrix:
     entrymap: dict[tuple[int, int], int]
 
     def __new__(cls, entries: Sequence[Sequence[Expressifiable]]) -> Matrix:
-        """New Matrix from a list of lists."""
+        """Create a new Matrix from a list of lists."""
         if not isinstance(entries, list) or not all(
             isinstance(row, list) for row in entries
         ):
@@ -58,7 +58,7 @@ class Matrix:
         elements: list[Expr],
         entrymap: dict[tuple[int, int], int],
     ) -> Matrix:
-        """New matrix from the internal representation."""
+        """Create a new matrix from the internal representation."""
         obj = super().__new__(cls)
         obj.nrows = nrows
         obj.ncols = ncols
@@ -69,7 +69,7 @@ class Matrix:
         return obj
 
     def __getitem__(self, ij: tuple[int, int]) -> Expr:
-        """Element indexing ``M[i, j]``."""
+        """Get element from indices e.g. ``M[i, j]``."""
         if isinstance(ij, tuple) and len(ij) == 2:
             i, j = ij
             if isinstance(i, int) and isinstance(j, int):

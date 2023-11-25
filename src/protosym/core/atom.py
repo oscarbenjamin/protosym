@@ -62,8 +62,7 @@ class AtomType(_Generic[_T]):
     ``value`` of any associated :class:`Atom`.
 
     See Also
-    ========
-
+    --------
     Atom: The actual instances of atomic expressions.
     protosym.core.tree.Tree: Type that often wraps an :class:`Atom`.
     """
@@ -77,7 +76,7 @@ class AtomType(_Generic[_T]):
     typ: type[_T]
 
     def __init__(self, name: str, typ: type[_T]):
-        """New type of Atom e.g. Integer or Symbol.
+        """Create a new type of atoms e.g. Integer or Symbol.
 
         Args:
             name (str): The name of this kind of Atom e.g. ``"Integer"``.
@@ -140,8 +139,7 @@ class Atom(_Generic[_T]):
     be compared to other objects with `==` and is itself hashable.
 
     See Also
-    ========
-
+    --------
     AtomType: The class of types of :class:`Atom`.
     protosym.core.tree.Tree: Type that often wraps an :class:`Atom`.
     """
@@ -156,7 +154,7 @@ class Atom(_Generic[_T]):
     value: _T
 
     def __new__(cls, atom_type: AtomType[_T], value: _T) -> Atom[_T]:
-        """New Atom or an existing Atom from the global store."""
+        """Create a new Atom or return an existing Atom from the global store."""
         key = (atom_type, value)
 
         previous = _all_atoms.get(key, None)

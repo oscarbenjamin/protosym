@@ -47,13 +47,13 @@ class SymAtomType(Generic[T_sym, T_val]):
     atom_type: AtomType[T_val]
 
     def __init__(self, name: str, sym: type[T_sym], typ: type[T_val]) -> None:
-        """New SymAtomType."""
+        """Create a SymAtomType."""
         self.name = name
         self.sym = sym
         self.atom_type = AtomType(name, typ)
 
     def __repr__(self) -> str:
-        """The name of the SymAtomType."""
+        """Display the name of the SymAtomType."""
         return self.name
 
     def __call__(self, value: T_val) -> T_sym:
@@ -130,8 +130,7 @@ class Sym:
     Subclasses should probably implement prettier printing.
 
     See Also
-    ========
-
+    --------
     protosym.simplecas::Expr - A subclass of :class:`Sym`.
     """
 
@@ -238,8 +237,7 @@ class Sym:
         1.0
 
         See Also
-        ========
-
+        --------
         SymEvaluator
         """
         return SymEvaluator(name)
@@ -257,8 +255,7 @@ class PyFunc:
     what is happening.
 
     See Also
-    ========
-
+    --------
     PyOp1
     PyOp2
     PyOpN
@@ -282,8 +279,7 @@ class PyOp(Generic[T_val], PyFunc):
     """Base class for PyFuncs T -> T, (T, T) -> T etc.
 
     See Also
-    ========
-
+    --------
     PyFunc
     """
 
@@ -294,8 +290,7 @@ class PyOp1(PyOp[T_val]):
     """Wrapper for an unary func T_val -> T_val.
 
     See Also
-    ========
-
+    --------
     PyFunc
     """
 
@@ -312,8 +307,7 @@ class PyOp2(PyOp[T_val]):
     """Wrapper for an binary func (T_val, T_val) -> T_val.
 
     See Also
-    ========
-
+    --------
     PyFunc
     """
 
@@ -330,8 +324,7 @@ class PyOpN(PyOp[T_val]):
     """Wrapper for a sequence func [T_val, ...] -> T_val.
 
     See Also
-    ========
-
+    --------
     PyFunc
     """
 
@@ -348,8 +341,7 @@ class PyFunc1(Generic[S_val, T_val], PyFunc):
     """Wrapper for unary func S_val -> T_val.
 
     See Also
-    ========
-
+    --------
     PyFunc
     """
 
@@ -366,8 +358,7 @@ class AtomFunc(Generic[T_val], PyFunc):
     """Wrapper for unary func object -> T_val.
 
     See Also
-    ========
-
+    --------
     PyFunc
     """
 
@@ -384,8 +375,7 @@ class HeadOp(Generic[T_val], PyFunc):
     """Wrapper for generic head function.
 
     See Also
-    ========
-
+    --------
     PyFunc
     """
 
@@ -493,8 +483,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
     0.5403023058681...
 
     See Also
-    ========
-
+    --------
     protosym.core.evaluate::Evaluator
     protosym.simplecas::Expr.new_evaluator
     """
@@ -506,7 +495,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
 
     # e.g. eval_f64[cos(a)] = f64_cos(a)
     @overload
-    def __setitem__(  # noqa: D105
+    def __setitem__(
         self,
         pattern: T_sym,
         call: WildCall[T_sym, PyOp1[T_val]]
@@ -517,7 +506,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
 
     # e.g. eval_f64[Integer[a]] = f64_from_int
     @overload
-    def __setitem__(  # noqa: D105
+    def __setitem__(
         self,
         pattern: SymAtomValue[T_sym, S_val],
         call: WildCall[T_sym, PyFunc1[S_val, T_val]],
@@ -526,7 +515,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
 
     # e.g. eval_repr[AtomRule[a]] = AtomFunc(repr)
     @overload
-    def __setitem__(  # noqa: D105
+    def __setitem__(
         self,
         pattern: AtomRuleType[T_sym],
         call: WildCall[T_sym, AtomFunc[T_val]],
@@ -535,14 +524,14 @@ class SymEvaluator(Generic[T_sym, T_val]):
 
     # e.g. eval_repr[HeadRule(a, b)] = HeadOp(...)
     @overload
-    def __setitem__(  # noqa: D105
+    def __setitem__(
         self,
         pattern: HeadRuleType[T_sym],
         call: WildCall[T_sym, HeadOp[T_val]],
     ) -> None:
         ...
 
-    def __setitem__(  # noqa: C901
+    def __setitem__(  # noqa [C901]
         self,
         pattern: T_sym
         | SymAtomValue[T_sym, S_val]
