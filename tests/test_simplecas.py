@@ -1,35 +1,33 @@
-from pytest import raises
-from pytest import skip
-
-from .utils import requires_llvmlite
-from .utils import requires_numpy
 from protosym.core.sym import SymAtomType
-from protosym.simplecas import a
-from protosym.simplecas import Add
-from protosym.simplecas import b
-from protosym.simplecas import cos
-from protosym.simplecas import diff
-from protosym.simplecas import Expr
-from protosym.simplecas import expressify
-from protosym.simplecas import f
-from protosym.simplecas import Function
-from protosym.simplecas import g
-from protosym.simplecas import Integer
-from protosym.simplecas import lambdify
-from protosym.simplecas import List
-from protosym.simplecas import Matrix
-from protosym.simplecas import Mul
-from protosym.simplecas import negone
-from protosym.simplecas import one
-from protosym.simplecas import Pow
-from protosym.simplecas import sin
-from protosym.simplecas import Symbol
-from protosym.simplecas import x
-from protosym.simplecas import y
-from protosym.simplecas import zero
-from protosym.simplecas.exceptions import ExpressifyError
-from protosym.simplecas.exceptions import LLVMNotImplementedError
+from protosym.simplecas import (
+    Add,
+    Expr,
+    Function,
+    Integer,
+    List,
+    Matrix,
+    Mul,
+    Pow,
+    Symbol,
+    a,
+    b,
+    cos,
+    diff,
+    expressify,
+    f,
+    g,
+    lambdify,
+    negone,
+    one,
+    sin,
+    x,
+    y,
+    zero,
+)
+from protosym.simplecas.exceptions import ExpressifyError, LLVMNotImplementedError
+from pytest import raises, skip
 
+from .utils import requires_llvmlite, requires_numpy
 
 two = Integer(2)
 

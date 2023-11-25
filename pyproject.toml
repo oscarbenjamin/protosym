@@ -84,12 +84,11 @@ pyright-check = "pyright {args:src tests}"
 
 [tool.hatch.envs.pre-commit]
 dependencies = [
+    "ruff",
     "black",
     "darglint",
-    "ruff",
     "pre-commit",
     "pre-commit-hooks",
-    "reorder-python-imports",
 ]
 
 [tool.hatch.envs.pre-commit.scripts]
@@ -131,6 +130,7 @@ extend-select = [
     "RUF",  # ruff-specific checks
     "C",  # mccabe
     "D",  # pydocstyle
+    "I",  # isort
 ]
 extend-ignore = [
     "RUF005",  # list concatenation

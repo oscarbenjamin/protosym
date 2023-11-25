@@ -9,23 +9,14 @@ by user-facing classes that derive from :class:`Sym`.
 """
 from __future__ import annotations
 
-from typing import Any
-from typing import Callable
-from typing import Generic
-from typing import overload
-from typing import Sequence
-from typing import TypeVar
+from typing import Any, Callable, Generic, Sequence, TypeVar, overload
 from weakref import WeakValueDictionary as _WeakDict
 
 from protosym.core.atom import AtomType
-from protosym.core.differentiate import diff_forward
-from protosym.core.differentiate import DiffProperties
+from protosym.core.differentiate import DiffProperties, diff_forward
 from protosym.core.evaluate import Evaluator
 from protosym.core.exceptions import BadRuleError
-from protosym.core.tree import SubsFunc
-from protosym.core.tree import Tr
-from protosym.core.tree import Tree
-
+from protosym.core.tree import SubsFunc, Tr, Tree
 
 __all__ = ["Sym", "SymAtomType", "SymEvaluator"]
 

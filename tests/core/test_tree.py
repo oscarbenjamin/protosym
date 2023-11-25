@@ -1,15 +1,15 @@
+from protosym.core.atom import Atom, AtomType
+from protosym.core.tree import (
+    ForwardGraph,
+    SubsFunc,
+    Tr,
+    Tree,
+    forward_graph,
+    funcs_symbols,
+    topological_sort,
+    topological_split,
+)
 from pytest import raises
-
-from protosym.core.atom import Atom
-from protosym.core.atom import AtomType
-from protosym.core.tree import forward_graph
-from protosym.core.tree import ForwardGraph
-from protosym.core.tree import funcs_symbols
-from protosym.core.tree import SubsFunc
-from protosym.core.tree import topological_sort
-from protosym.core.tree import topological_split
-from protosym.core.tree import Tr
-from protosym.core.tree import Tree
 
 
 def test_Tree_basic() -> None:

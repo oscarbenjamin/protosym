@@ -1,27 +1,30 @@
 """Basic functions and operations."""
 import math
 
-from protosym.core.sym import AtomFunc
-from protosym.core.sym import AtomRule
-from protosym.core.sym import HeadOp
-from protosym.core.sym import HeadRule
-from protosym.core.sym import PyFunc1
-from protosym.core.sym import PyOp1
-from protosym.core.sym import PyOp2
-from protosym.core.sym import PyOpN
-from protosym.core.sym import star
-from protosym.simplecas.expr import Add
-from protosym.simplecas.expr import cos
-from protosym.simplecas.expr import eval_f64
-from protosym.simplecas.expr import eval_latex
-from protosym.simplecas.expr import eval_repr
-from protosym.simplecas.expr import Expr
-from protosym.simplecas.expr import Function
-from protosym.simplecas.expr import Integer
-from protosym.simplecas.expr import Mul
-from protosym.simplecas.expr import sin
-from protosym.simplecas.expr import Symbol
-
+from protosym.core.sym import (
+    AtomFunc,
+    AtomRule,
+    HeadOp,
+    HeadRule,
+    PyFunc1,
+    PyOp1,
+    PyOp2,
+    PyOpN,
+    star,
+)
+from protosym.simplecas.expr import (
+    Add,
+    Expr,
+    Function,
+    Integer,
+    Mul,
+    Symbol,
+    cos,
+    eval_f64,
+    eval_latex,
+    eval_repr,
+    sin,
+)
 
 a = Expr.new_wild("a")
 b = Expr.new_wild("b")

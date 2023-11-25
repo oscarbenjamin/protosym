@@ -1,16 +1,10 @@
 """Simple Matrix class."""
 from __future__ import annotations
 
-from typing import Any
-from typing import Sequence
 from typing import TYPE_CHECKING as _TYPE_CHECKING
+from typing import Any, Sequence
 
-from protosym.simplecas.expr import Add
-from protosym.simplecas.expr import Expr
-from protosym.simplecas.expr import expressify
-from protosym.simplecas.expr import List
-from protosym.simplecas.expr import zero
-
+from protosym.simplecas.expr import Add, Expr, List, expressify, zero
 
 if _TYPE_CHECKING:
     from protosym.simplecas.expr import Expressifiable

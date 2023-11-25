@@ -4,14 +4,12 @@ This module defines the :class:`AtomType` and :class:`Atom` types.
 """
 from __future__ import annotations
 
-from typing import Any
-from typing import cast
+from typing import TYPE_CHECKING as _TYPE_CHECKING
+from typing import Any, cast
 from typing import Generic as _Generic
 from typing import Hashable as _Hashable
-from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import TypeVar as _TypeVar
 from weakref import WeakValueDictionary as _WeakDict
-
 
 __all__ = [
     "Atom",

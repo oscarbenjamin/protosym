@@ -10,27 +10,22 @@ from typing import Any
 import sympy
 from sympy.core.function import AppliedUndef
 
-from protosym.core.sym import HeadOp
-from protosym.core.sym import HeadRule
-from protosym.core.sym import PyFunc1
-from protosym.core.sym import PyOp1
-from protosym.core.sym import PyOp2
-from protosym.core.sym import PyOpN
-from protosym.core.sym import star
-from protosym.simplecas import a
-from protosym.simplecas import Add
-from protosym.simplecas import b
-from protosym.simplecas import cos
-from protosym.simplecas import Expr
-from protosym.simplecas import Function
-from protosym.simplecas import Integer
-from protosym.simplecas import List
-from protosym.simplecas import Matrix
-from protosym.simplecas import Mul
-from protosym.simplecas import Pow
-from protosym.simplecas import sin
-from protosym.simplecas import Symbol
-
+from protosym.core.sym import HeadOp, HeadRule, PyFunc1, PyOp1, PyOp2, PyOpN, star
+from protosym.simplecas import (
+    Add,
+    Expr,
+    Function,
+    Integer,
+    List,
+    Matrix,
+    Mul,
+    Pow,
+    Symbol,
+    a,
+    b,
+    cos,
+    sin,
+)
 
 eval_to_sympy = Expr.new_evaluator("to_sympy", sympy.Basic)
 

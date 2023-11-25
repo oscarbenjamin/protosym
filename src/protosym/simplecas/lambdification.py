@@ -3,22 +3,13 @@ from __future__ import annotations
 
 import ctypes
 import struct
-from typing import Any
-from typing import Callable
 from typing import TYPE_CHECKING as _TYPE_CHECKING
+from typing import Any, Callable
 
 from protosym.core.tree import forward_graph
 from protosym.simplecas.exceptions import LLVMNotImplementedError
-from protosym.simplecas.expr import Add
-from protosym.simplecas.expr import bin_expand
-from protosym.simplecas.expr import cos
-from protosym.simplecas.expr import Expr
-from protosym.simplecas.expr import Integer
-from protosym.simplecas.expr import Mul
-from protosym.simplecas.expr import Pow
-from protosym.simplecas.expr import sin
+from protosym.simplecas.expr import Add, Expr, Integer, Mul, Pow, bin_expand, cos, sin
 from protosym.simplecas.matrix import Matrix
-
 
 if _TYPE_CHECKING:
     from protosym.core.tree import Tree

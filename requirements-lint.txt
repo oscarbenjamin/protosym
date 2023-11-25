@@ -1,6 +1,5 @@
+ruff
 black
 darglint
-ruff
 pre-commit
 pre-commit-hooks
-reorder-python-imports

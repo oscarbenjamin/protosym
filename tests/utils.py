@@ -1,6 +1,5 @@
 # Utilities for the test suite
-from typing import Any
-from typing import Callable
+from typing import Any, Callable
 
 __all__ = [
     "requires",
@@ -9,8 +8,9 @@ __all__ = [
     "requires_sympy",
 ]
 
-import pytest
 from functools import wraps
+
+import pytest
 
 
 def requires(module_name: str) -> Callable[[Callable[..., None]], Callable[..., None]]:

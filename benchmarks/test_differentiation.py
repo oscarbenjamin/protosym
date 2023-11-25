@@ -4,15 +4,12 @@ Differentiation using ProtoSym and SimpleCAS is currently benchmarked against
 SymPy's and SymEngine's symbolic differentiation.
 
 """
-from typing import Callable
-from typing import TypeVar
+from typing import Callable, TypeVar
 
 import pytest
 import symengine
 import sympy
-
 from protosym import simplecas
-
 
 ExprType = TypeVar("ExprType")
 Fixture = Callable[..., ExprType]

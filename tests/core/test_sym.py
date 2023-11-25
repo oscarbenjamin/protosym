@@ -3,24 +3,24 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from pytest import approx
-from pytest import raises
-
 from protosym.core.exceptions import BadRuleError
-from protosym.core.sym import AtomFunc
-from protosym.core.sym import AtomRule
-from protosym.core.sym import HeadOp
-from protosym.core.sym import HeadRule
-from protosym.core.sym import PyFunc1
-from protosym.core.sym import PyOp1
-from protosym.core.sym import PyOp2
-from protosym.core.sym import PyOpN
-from protosym.core.sym import star
-from protosym.core.sym import Sym
-from protosym.core.sym import SymAtomType
-from protosym.core.sym import SymDifferentiator
-from protosym.core.sym import SymEvaluator
+from protosym.core.sym import (
+    AtomFunc,
+    AtomRule,
+    HeadOp,
+    HeadRule,
+    PyFunc1,
+    PyOp1,
+    PyOp2,
+    PyOpN,
+    Sym,
+    SymAtomType,
+    SymDifferentiator,
+    SymEvaluator,
+    star,
+)
 from protosym.core.tree import Tree
+from pytest import approx, raises
 
 
 class Expr(Sym):

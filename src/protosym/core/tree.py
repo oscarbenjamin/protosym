@@ -8,9 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from weakref import WeakValueDictionary as _WeakDict
 
-from protosym.core.atom import Atom
-from protosym.core.atom import AtomType
-
+from protosym.core.atom import Atom, AtomType
 
 if _TYPE_CHECKING:
     from protosym.core.atom import AnyAtom

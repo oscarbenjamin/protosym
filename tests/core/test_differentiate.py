@@ -1,8 +1,6 @@
 from protosym.core.atom import AtomType
-from protosym.core.differentiate import diff_forward
-from protosym.core.differentiate import DiffProperties
-from protosym.core.tree import SubsFunc
-from protosym.core.tree import Tr
+from protosym.core.differentiate import DiffProperties, diff_forward
+from protosym.core.tree import SubsFunc, Tr
 
 
 def test_core_differentiate() -> None:

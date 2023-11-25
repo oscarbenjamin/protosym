@@ -4,9 +4,7 @@ import sys
 from pathlib import Path
 
 import nox
-from nox import Session
-from nox import session
-
+from nox import Session, session
 
 package = "protosym"
 python_versions = ["3.9", "3.8"]

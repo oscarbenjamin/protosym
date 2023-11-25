@@ -1,5 +1,4 @@
-from protosym.core.atom import Atom
-from protosym.core.atom import AtomType
+from protosym.core.atom import Atom, AtomType
 
 
 def test_AtomType() -> None:

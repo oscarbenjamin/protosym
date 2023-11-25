@@ -6,12 +6,10 @@ interface for specifying differentiation rules.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 from protosym.core.tree import forward_graph
-
 
 __all__ = [
     "DiffProperties",
@@ -20,7 +18,7 @@ __all__ = [
 
 
 if _TYPE_CHECKING:
-    from protosym.core.tree import Tree, SubsFunc
+    from protosym.core.tree import SubsFunc, Tree
 
     _DiffRules = dict[tuple[Tree, int], SubsFunc]
 

@@ -1,16 +1,11 @@
 """Define the core evaluation code."""
 from __future__ import annotations
 
-from typing import Callable
-from typing import cast
-from typing import Generic
 from typing import TYPE_CHECKING as _TYPE_CHECKING
-from typing import TypeVar
+from typing import Callable, Generic, TypeVar, cast
 
 from protosym.core.exceptions import NoEvaluationRuleError
-from protosym.core.tree import forward_graph
-from protosym.core.tree import Tree
-
+from protosym.core.tree import Tree, forward_graph
 
 if _TYPE_CHECKING:
     from protosym.core.atom import AnyValue as _AnyValue
@@ -25,7 +20,7 @@ _S = TypeVar("_S")
 
 
 if _TYPE_CHECKING:
-    from typing import Sequence, Any
+    from typing import Any, Sequence
 
     Op1 = Callable[[_T], _T]
     Op2 = Callable[[_T, _T], _T]

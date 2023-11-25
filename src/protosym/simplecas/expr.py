@@ -1,25 +1,21 @@
 """The Expr class."""
 from __future__ import annotations
 
-from functools import reduce
-from functools import wraps
-from typing import Any
-from typing import Callable
+from functools import reduce, wraps
 from typing import TYPE_CHECKING as _TYPE_CHECKING
-from typing import TypeVar
-from typing import Union
+from typing import Any, Callable, TypeVar, Union
 
 from protosym.core.evaluate import Transformer
-from protosym.core.sym import AtomFunc
-from protosym.core.sym import AtomRule
-from protosym.core.sym import HeadOp
-from protosym.core.sym import HeadRule
-from protosym.core.sym import Sym
-from protosym.core.sym import SymDifferentiator
-from protosym.core.tree import SubsFunc
-from protosym.core.tree import topological_sort
+from protosym.core.sym import (
+    AtomFunc,
+    AtomRule,
+    HeadOp,
+    HeadRule,
+    Sym,
+    SymDifferentiator,
+)
+from protosym.core.tree import SubsFunc, topological_sort
 from protosym.simplecas.exceptions import ExpressifyError
-
 
 T_sym = TypeVar("T_sym", bound=Sym)
 
