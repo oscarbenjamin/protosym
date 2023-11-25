@@ -14,8 +14,8 @@ if [ "$1" = "--rs" ]; then
     cd -
 fi
 
-pre-commit run --all-files
-mypy src tests
-python -m xdoctest --quiet protosym
-pytest --cov=protosym
-coverage html
+hatch run pre-commit:run
+hatch run types:mypy-check
+hatch run docs:build
+hatch run test:doctest
+hatch run test:coverage
