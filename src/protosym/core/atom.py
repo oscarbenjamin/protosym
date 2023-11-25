@@ -8,7 +8,6 @@ from typing import Any
 from typing import cast
 from typing import Generic as _Generic
 from typing import Hashable as _Hashable
-from typing import Type
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import TypeVar as _TypeVar
 from weakref import WeakValueDictionary as _WeakDict
@@ -75,9 +74,9 @@ class AtomType(_Generic[_T]):
     )
 
     name: str
-    typ: Type[_T]
+    typ: type[_T]
 
-    def __init__(self, name: str, typ: Type[_T]):
+    def __init__(self, name: str, typ: type[_T]):
         """New type of Atom e.g. Integer or Symbol.
 
         Args:

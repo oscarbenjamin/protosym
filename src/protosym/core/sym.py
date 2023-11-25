@@ -12,10 +12,8 @@ from __future__ import annotations
 from typing import Any
 from typing import Callable
 from typing import Generic
-from typing import Optional
 from typing import overload
 from typing import Sequence
-from typing import Type
 from typing import TypeVar
 from weakref import WeakValueDictionary as _WeakDict
 
@@ -45,10 +43,10 @@ class SymAtomType(Generic[T_sym, T_val]):
     """Wrapper around AtomType to construct atoms as Sym."""
 
     name: str
-    sym: Type[T_sym]
+    sym: type[T_sym]
     atom_type: AtomType[T_val]
 
-    def __init__(self, name: str, sym: Type[T_sym], typ: Type[T_val]) -> None:
+    def __init__(self, name: str, sym: type[T_sym], typ: type[T_val]) -> None:
         """New SymAtomType."""
         self.name = name
         self.sym = sym
@@ -196,7 +194,7 @@ class Sym:
 
     @classmethod
     def new_atom(
-        cls: Type[T_sym], name: str, typ: Type[T_val]
+        cls: type[T_sym], name: str, typ: type[T_val]
     ) -> SymAtomType[T_sym, T_val]:
         """Create a new atom type for a given :class:`Sym` subclass.
 
@@ -209,7 +207,7 @@ class Sym:
         return SymAtomType(name, cls, typ)
 
     @classmethod
-    def new_wild(cls: Type[T_sym], name: str) -> T_sym:
+    def new_wild(cls: type[T_sym], name: str) -> T_sym:
         """Create a new wild for a given :class:`Sym` subclass.
 
         >>> from protosym.core.sym import Sym
@@ -223,7 +221,7 @@ class Sym:
 
     @classmethod
     def new_evaluator(
-        cls: Type[T_sym], name: str, typ: Type[T_val]
+        cls: type[T_sym], name: str, typ: type[T_val]
     ) -> SymEvaluator[T_sym, T_val]:
         """Create a :class:`SymEvaluator` for a :class:`Sym` subclass.
 
@@ -607,9 +605,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
         """Print as the name of the Evaluator."""
         return self.name
 
-    def __call__(
-        self, expr: T_sym, values: Optional[dict[T_sym, T_val]] = None
-    ) -> T_val:
+    def __call__(self, expr: T_sym, values: dict[T_sym, T_val] | None = None) -> T_val:
         """Evaluate a given expression using the rules."""
         values_rep = {}
         if values is not None:
@@ -636,7 +632,7 @@ class SymDifferentiator(Generic[T_sym]):
 
     def __init__(
         self,
-        new_sym: Type[T_sym],
+        new_sym: type[T_sym],
         *,
         add: T_sym,
         mul: T_sym,

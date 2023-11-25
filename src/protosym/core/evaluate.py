@@ -25,7 +25,7 @@ _S = TypeVar("_S")
 
 
 if _TYPE_CHECKING:
-    from typing import Optional, Sequence, Any
+    from typing import Sequence, Any
 
     Op1 = Callable[[_T], _T]
     Op2 = Callable[[_T, _T], _T]
@@ -193,7 +193,7 @@ class Evaluator(Generic[_T]):
         # is the value of expr.
         return stack[-1]
 
-    def __call__(self, expr: Tree, values: Optional[dict[Tree, _T]] = None) -> _T:
+    def __call__(self, expr: Tree, values: dict[Tree, _T] | None = None) -> _T:
         """Short-hand for evaluate."""
         if values is None:
             values = {}

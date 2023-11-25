@@ -13,7 +13,6 @@ from protosym.core.atom import AtomType
 
 
 if _TYPE_CHECKING:
-    from typing import Optional
     from protosym.core.atom import AnyAtom
 
 
@@ -204,7 +203,7 @@ def topological_sort(
     expression: Tree,
     *,
     heads: bool = False,
-    exclude: Optional[set[Tree]] = None,
+    exclude: set[Tree] | None = None,
 ) -> list[Tree]:
     """List of subexpressions of a :class:`Tree` sorted topologically.
 
@@ -291,7 +290,7 @@ def topological_sort(
 def topological_split(
     expr: Tree,
     *,
-    exclude: Optional[set[Tree]] = None,
+    exclude: set[Tree] | None = None,
 ) -> tuple[list[Tree], set[Tree], list[Tree]]:
     """Topological sort split into atoms, heads and compound expressions.
 

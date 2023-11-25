@@ -5,7 +5,6 @@ from functools import reduce
 from functools import wraps
 from typing import Any
 from typing import Callable
-from typing import Optional
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
@@ -335,7 +334,7 @@ class Expr(Sym):
 
         return from_sympy(expr)
 
-    def eval_f64(self, values: Optional[dict[Expr, float]] = None) -> float:
+    def eval_f64(self, values: dict[Expr, float] | None = None) -> float:
         """Evaluate the expression as a 64-bit ``float``.
 
         >>> from protosym.simplecas import Symbol, sin
