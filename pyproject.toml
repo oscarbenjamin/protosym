@@ -2,7 +2,7 @@
 name = "protosym"
 dynamic = ["version"]
 requires-python = ">=3.8"
-license = "BSD-3-clause"
+license = "BSD-3-Clause"
 description = "ProtoSym"
 readme = "README.rst"
 authors = [
