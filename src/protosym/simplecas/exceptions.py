@@ -1,4 +1,5 @@
 """Exception types raised in simplecas."""
+
 from protosym.core.exceptions import ProtoSymError
 
 

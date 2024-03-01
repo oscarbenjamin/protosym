@@ -4,6 +4,7 @@ Differentiation using ProtoSym and SimpleCAS is currently benchmarked against
 SymPy's and SymEngine's symbolic differentiation.
 
 """
+
 from typing import Callable, TypeVar
 
 import pytest

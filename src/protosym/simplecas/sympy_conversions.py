@@ -3,6 +3,7 @@
 These are defined in their own module so that SymPy will not imported if it is
 not needed.
 """
+
 from __future__ import annotations
 
 from typing import Any

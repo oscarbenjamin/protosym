@@ -2,6 +2,7 @@
 
 This module defines classes for representing expressions in top-down tree form.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

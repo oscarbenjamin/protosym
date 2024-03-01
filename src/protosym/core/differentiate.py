@@ -4,6 +4,7 @@ This module implements the basic forward differentiation algorithm. Higher
 level code in the sym module wraps this to make a nicer pattern-matching style
 interface for specifying differentiation rules.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -143,4 +144,4 @@ except ImportError:
     rust_protosym = None
 
 if rust_protosym is not None:  # pragma: no cover
-    from rust_protosym import DiffProperties, diff_forward  # type:ignore # noqa
+    from rust_protosym import DiffProperties, diff_forward  # type:ignore

@@ -1,4 +1,5 @@
 """Simple Matrix class."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING as _TYPE_CHECKING

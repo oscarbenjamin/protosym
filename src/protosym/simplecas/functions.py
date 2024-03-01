@@ -1,4 +1,5 @@
 """Basic functions and operations."""
+
 import math
 
 from protosym.core.sym import (

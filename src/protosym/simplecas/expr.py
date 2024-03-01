@@ -1,4 +1,5 @@
 """The Expr class."""
+
 from __future__ import annotations
 
 from functools import reduce, wraps
