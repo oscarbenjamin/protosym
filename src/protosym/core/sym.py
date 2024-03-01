@@ -7,6 +7,7 @@ with the rest of the machinery defined in `protosym.core`. The idea here is to
 build a nicer syntax over the lower-level classes that can be inherited for use
 by user-facing classes that derive from :class:`Sym`.
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, Generic, Sequence, TypeVar, overload
@@ -489,11 +490,12 @@ class SymEvaluator(Generic[T_sym, T_val]):
     def __setitem__(
         self,
         pattern: T_sym,
-        call: WildCall[T_sym, PyOp1[T_val]]
-        | WildCall[T_sym, PyOp2[T_val]]
-        | WildCall[T_sym, PyOpN[T_val]],
-    ) -> None:
-        ...
+        call: (
+            WildCall[T_sym, PyOp1[T_val]]
+            | WildCall[T_sym, PyOp2[T_val]]
+            | WildCall[T_sym, PyOpN[T_val]]
+        ),
+    ) -> None: ...
 
     # e.g. eval_f64[Integer[a]] = f64_from_int
     @overload
@@ -501,8 +503,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
         self,
         pattern: SymAtomValue[T_sym, S_val],
         call: WildCall[T_sym, PyFunc1[S_val, T_val]],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     # e.g. eval_repr[AtomRule[a]] = AtomFunc(repr)
     @overload
@@ -510,8 +511,7 @@ class SymEvaluator(Generic[T_sym, T_val]):
         self,
         pattern: AtomRuleType[T_sym],
         call: WildCall[T_sym, AtomFunc[T_val]],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     # e.g. eval_repr[HeadRule(a, b)] = HeadOp(...)
     @overload
@@ -519,21 +519,24 @@ class SymEvaluator(Generic[T_sym, T_val]):
         self,
         pattern: HeadRuleType[T_sym],
         call: WildCall[T_sym, HeadOp[T_val]],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def __setitem__(  # noqa [C901]
         self,
-        pattern: T_sym
-        | SymAtomValue[T_sym, S_val]
-        | AtomRuleType[T_sym]
-        | HeadRuleType[T_sym],
-        call: WildCall[T_sym, PyOp1[T_val]]
-        | WildCall[T_sym, PyOp2[T_val]]
-        | WildCall[T_sym, PyOpN[T_val]]
-        | WildCall[T_sym, PyFunc1[S_val, T_val]]
-        | WildCall[T_sym, AtomFunc[T_val]]
-        | WildCall[T_sym, HeadOp[T_val]],
+        pattern: (
+            T_sym
+            | SymAtomValue[T_sym, S_val]
+            | AtomRuleType[T_sym]
+            | HeadRuleType[T_sym]
+        ),
+        call: (
+            WildCall[T_sym, PyOp1[T_val]]
+            | WildCall[T_sym, PyOp2[T_val]]
+            | WildCall[T_sym, PyOpN[T_val]]
+            | WildCall[T_sym, PyFunc1[S_val, T_val]]
+            | WildCall[T_sym, AtomFunc[T_val]]
+            | WildCall[T_sym, HeadOp[T_val]]
+        ),
     ) -> None:
         """Add an evaluation rule."""
         if not isinstance(call, WildCall):

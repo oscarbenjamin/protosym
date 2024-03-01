@@ -1,4 +1,5 @@
 """Demonstration of putting together a simple CAS."""
+
 from __future__ import annotations
 
 import protosym.simplecas.functions  # noqa

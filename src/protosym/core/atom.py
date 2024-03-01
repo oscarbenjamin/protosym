@@ -2,6 +2,7 @@
 
 This module defines the :class:`AtomType` and :class:`Atom` types.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING as _TYPE_CHECKING
