@@ -78,7 +78,7 @@ jobs:
     needs: [tag-and-build]
     environment:
       name: release
-      url: https://pypi.org/p/protosym
+      url: https://test.pypi.org/p/protosym
     permissions:
       id-token: write
     runs-on: ubuntu-latest
