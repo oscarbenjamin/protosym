@@ -7,10 +7,13 @@ on:
       - master
 
 jobs:
-  release:
-    name: Release
+  tag-and-build:
+    name: Tag and build
     runs-on: ubuntu-latest
     permissions: write-all
+
+    outputs:
+      tag: ${{ steps.tag-step.outputs.tag }}
 
     steps:
       - name: Check out the repository
@@ -48,25 +51,6 @@ jobs:
           version=$(hatch version) &&
           hatch version $version$(date +%s)
 
-      - name: Build package
-        run: |
-          hatch build
-
-      - name: Publish package on PyPI
-        if: steps.check-version.outputs.tag
-        uses: pypa/gh-action-pypi-publish@v1.8.12
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}
-
-      - name: Publish package on TestPyPI
-        if: "! steps.check-version.outputs.tag"
-        uses: pypa/gh-action-pypi-publish@v1.8.12
-        with:
-          user: __token__
-          password: ${{ secrets.TEST_PYPI_TOKEN }}
-          repository_url: https://test.pypi.org/legacy/
-
       - name: Publish the release notes
         uses: release-drafter/release-drafter@v6.0.0
         with:
@@ -74,3 +58,40 @@ jobs:
           tag: ${{ steps.check-version.outputs.tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build package
+        run: |
+          hatch build
+
+      - name: Store tag
+        id: tag-step
+        run: echo "tag=${{ steps.check-version.outputs.tag }}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/
+
+  pypi-publish:
+    name: Publish to PyPI
+    needs: [tag-and-build]
+    environment:
+      name: release
+      url: https://pypi.org/p/protosym
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: echo "Tag = ${{ needs.tag-and-build.outputs.tag }}"
+
+      - name: Publish package on PyPI
+        if: needs.tag-and-build.outputs.tag
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Publish package on TestPyPI
+        if: "! needs.tag-and-build.outputs.tag"
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository_url: https://test.pypi.org/legacy/
