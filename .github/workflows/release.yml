@@ -74,7 +74,7 @@ jobs:
           path: dist/
 
   test-pypi-publish:
-    name: Publish to PyPI
+    name: Publish to Test-PyPI
     needs: [tag-and-build]
     if: "! needs.tag-and-build.outputs.tag"
     environment:
