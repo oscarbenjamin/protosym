@@ -86,6 +86,11 @@ jobs:
     steps:
       - run: echo "Tag = ${{ needs.tag-and-build.outputs.tag }}"
 
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+
       - name: Publish package on PyPI
         if: needs.tag-and-build.outputs.tag
         uses: pypa/gh-action-pypi-publish@release/v1
