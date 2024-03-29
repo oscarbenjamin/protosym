@@ -90,6 +90,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-artifacts
+          path: dist
+
+      - run: ls -R dist
 
       - name: Publish package on PyPI
         if: needs.tag-and-build.outputs.tag
