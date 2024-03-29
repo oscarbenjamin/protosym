@@ -24,7 +24,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5.0.0
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
       - name: Upgrade pip
         run: |
@@ -73,33 +73,46 @@ jobs:
           name: release-artifacts
           path: dist/
 
-  pypi-publish:
+  test-pypi-publish:
     name: Publish to PyPI
     needs: [tag-and-build]
+    if: "! needs.tag-and-build.outputs.tag"
     environment:
-      name: release
+      name: test-pypi
       url: https://test.pypi.org/p/protosym
     permissions:
       id-token: write
     runs-on: ubuntu-latest
 
     steps:
-      - run: echo "Tag = ${{ needs.tag-and-build.outputs.tag }}"
-
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
           name: release-artifacts
           path: dist
 
-      - run: ls -R dist
-
-      - name: Publish package on PyPI
-        if: needs.tag-and-build.outputs.tag
-        uses: pypa/gh-action-pypi-publish@release/v1
-
       - name: Publish package on TestPyPI
-        if: "! needs.tag-and-build.outputs.tag"
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+
+  pypi-publish:
+    name: Publish to PyPI
+    needs: [tag-and-build]
+    if: needs.tag-and-build.outputs.tag
+    environment:
+      name: pypi
+      url: https://pypi.org/p/protosym
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist
+
+      - name: Publish package on PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
