@@ -32,6 +32,9 @@ ProtoSym
    :target: https://github.com/psf/black
    :alt: Black
 
+Our mailing list is at https://groups.google.com/forum/?fromgroups#!forum/sympy.
+
+Feel free to ask us anything there. We have a very welcoming and helpful community.
 
 Features
 --------
