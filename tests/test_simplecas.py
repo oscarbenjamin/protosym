@@ -186,7 +186,7 @@ def test_simplecas_to_sympy() -> None:
         (cos(x), cosx_sym),
         (cos(x) ** 2 + sin(x) ** 2, cosx_sym**2 + sinx_sym**2),  # pyright: ignore
         (cos(x) * sin(x), cosx_sym * sinx_sym),  # pyright: ignore
-        (f(x), f_sym(x_sym)),
+        (f(x), f_sym(x_sym)),  # pyright: ignore
     ]
     for expr, sympy_expr in test_cases:
         # XXX: Converting to SymPy and back does not in general round-trip
