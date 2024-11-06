@@ -122,7 +122,7 @@ def test_Sym_evaluator() -> None:
     to_str[Integer[a]] = PyFunc1[int, str](str)(a)
     to_str[AtomRule[a]] = AtomFunc(str)(a)
     to_str[cos(a)] = PyOp1(lambda s: f"cos({s})")(a)
-    to_str[Add(star(a))] = PyOpN(" + ".join)(a)
+    to_str[Add(star(a))] = PyOpN(str(" + ").join)(a)
     to_str[HeadRule(a, b)] = HeadOp(lambda f, a: f"{f}({', '.join(a)})")(a, b)
 
     assert to_str(cos(one)) == "cos(1)"

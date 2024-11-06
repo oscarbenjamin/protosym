@@ -16,6 +16,7 @@ fi
 
 hatch run pre-commit:run
 hatch run types:mypy-check
+hatch run types:pyright-check
 hatch run docs:build
 hatch run test:doctest
 hatch run test:coverage

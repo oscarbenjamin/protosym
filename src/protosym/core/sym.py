@@ -10,7 +10,12 @@ by user-facing classes that derive from :class:`Sym`.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING as _TYPE_CHECKING
 from typing import Any, Callable, Generic, Sequence, TypeVar, overload
+
+if _TYPE_CHECKING:
+    from typing_extensions import Self
+
 from weakref import WeakValueDictionary as _WeakDict
 
 from protosym.core.atom import AtomType
@@ -130,7 +135,7 @@ class Sym:
 
     rep: Tree
 
-    def __new__(cls, tree_expr: Tree) -> Sym:
+    def __new__(cls, tree_expr: Tree) -> Self:
         """Create a new Sym wrapping `tree_expr`.
 
         If an equivalent Sym instance already exists then the same object will
