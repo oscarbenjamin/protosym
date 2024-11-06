@@ -1,17 +1,16 @@
 repos:
   - repo: local
     hooks:
-      - id: ruff
-        name: Run ruff on Python files
-        entry: ruff --fix
+      - id: ruff-lint
+        name: Run ruff lint on Python files
+        entry: ruff check --select=I --fix
         language: python
         types: [python]
-      - id: black
-        name: black
-        entry: black
-        language: system
+      - id: ruff-format
+        name: Run ruff format on Python files
+        entry: ruff format
+        language: python
         types: [python]
-        require_serial: true
       - id: check-toml
         name: Check Toml
         entry: check-toml
@@ -22,12 +21,6 @@ repos:
         entry: check-yaml
         language: system
         types: [yaml]
-      - id: trailing-whitespace
-        name: Trim Trailing Whitespace
-        entry: trailing-whitespace-fixer
-        language: system
-        types: [text]
-        stages: [commit, push, manual]
       - id: check-added-large-files
         name: Check for added large files
         entry: check-added-large-files

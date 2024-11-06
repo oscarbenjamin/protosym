@@ -1,3 +1,5 @@
+from pytest import raises
+
 from protosym.core.atom import Atom, AtomType
 from protosym.core.tree import (
     ForwardGraph,
@@ -9,7 +11,6 @@ from protosym.core.tree import (
     topological_sort,
     topological_split,
 )
-from pytest import raises
 
 
 def test_Tree_basic() -> None:
