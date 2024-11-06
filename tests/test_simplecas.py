@@ -1,3 +1,5 @@
+from pytest import raises, skip
+
 from protosym.core.sym import SymAtomType
 from protosym.simplecas import (
     Add,
@@ -25,7 +27,6 @@ from protosym.simplecas import (
     zero,
 )
 from protosym.simplecas.exceptions import ExpressifyError, LLVMNotImplementedError
-from pytest import raises, skip
 
 from .utils import requires_llvmlite, requires_numpy
 
@@ -34,11 +35,11 @@ two = Integer(2)
 
 def test_simplecas_types() -> None:
     """Basic tests for type of Expr."""
-    assert type(x) == Expr
-    assert type(Mul) == Expr
-    assert type(Integer) == SymAtomType
-    assert type(Integer(1)) == Expr
-    assert type(Mul(x, Integer(1))) == Expr
+    assert type(x) is Expr
+    assert type(Mul) is Expr
+    assert type(Integer) is SymAtomType
+    assert type(Integer(1)) is Expr
+    assert type(Mul(x, Integer(1))) is Expr
     raises(TypeError, lambda: Expr([]))  # type: ignore
 
 

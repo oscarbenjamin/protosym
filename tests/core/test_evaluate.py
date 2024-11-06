@@ -1,11 +1,12 @@
 import math
 from typing import Callable
 
+from pytest import raises
+
 from protosym.core.atom import AtomType
 from protosym.core.evaluate import Evaluator, Transformer
 from protosym.core.exceptions import NoEvaluationRuleError
 from protosym.core.tree import Tr, Tree, funcs_symbols
-from pytest import raises
 
 
 def test_Evaluator() -> None:

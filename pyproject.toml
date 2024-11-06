@@ -86,7 +86,6 @@ pyright-check = "pyright {args:src tests}"
 [tool.hatch.envs.pre-commit]
 dependencies = [
     "ruff",
-    "black",
     "pre-commit",
     "pre-commit-hooks",
 ]
@@ -141,7 +140,7 @@ extend-ignore = [
     "RUF005",  # list concatenation
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D100", "D104", "PLR2004", "PLR0124"]
 
 [tool.ruff.lint.pydocstyle]

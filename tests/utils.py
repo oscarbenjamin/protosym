@@ -22,7 +22,7 @@ def requires(module_name: str) -> Callable[[Callable[..., None]], Callable[..., 
             try:
                 __import__(module_name)
             except ImportError:
-                pytest.skip("requires %s" % module_name)
+                pytest.skip(f"Requires {module_name}")
             return func(*args, **kwargs)
 
         return wrapper

@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from pytest import approx, raises
+
 from protosym.core.exceptions import BadRuleError
 from protosym.core.sym import (
     AtomFunc,
@@ -20,7 +22,6 @@ from protosym.core.sym import (
     star,
 )
 from protosym.core.tree import Tree
-from pytest import approx, raises
 
 
 class Expr(Sym):
@@ -41,17 +42,19 @@ class Expr(Sym):
         return Expr(self.rep(*args_rep))
 
 
-def _make_atoms() -> tuple[
-    SymAtomType[Expr, int],
-    SymAtomType[Expr, str],
-    Expr,
-    Expr,
-    Expr,
-    Expr,
-    Expr,
-    Expr,
-    Expr,
-]:
+def _make_atoms() -> (
+    tuple[
+        SymAtomType[Expr, int],
+        SymAtomType[Expr, str],
+        Expr,
+        Expr,
+        Expr,
+        Expr,
+        Expr,
+        Expr,
+        Expr,
+    ]
+):
     """Set up a Sym subclass and create some atoms etc."""
     Integer = Expr.new_atom("Integer", int)
     Function = Expr.new_atom("Function", str)
@@ -105,7 +108,7 @@ def test_Sym_types() -> None:
     assert type(cos) is Expr
     assert type(Add) is Expr
     assert type(cos.rep) is Tree
-    assert type(a) == type(b) == Expr
+    assert type(a) is type(b) is Expr
 
 
 def test_Sym_evaluator() -> None:
@@ -113,7 +116,7 @@ def test_Sym_evaluator() -> None:
     Integer, Function, cos, sin, Add, one, a, b, x = _make_atoms()
 
     to_str = Expr.new_evaluator("to_str", str)
-    assert type(to_str) == SymEvaluator
+    assert type(to_str) is SymEvaluator
     assert repr(to_str) == repr(to_str) == "to_str"
 
     to_str[Integer[a]] = PyFunc1[int, str](str)(a)

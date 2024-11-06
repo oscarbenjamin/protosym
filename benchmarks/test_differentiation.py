@@ -10,6 +10,7 @@ from typing import Callable, TypeVar
 import pytest
 import symengine
 import sympy
+
 from protosym import simplecas
 
 ExprType = TypeVar("ExprType")
