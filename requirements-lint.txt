@@ -1,4 +1,3 @@
 ruff
-black
 pre-commit
 pre-commit-hooks
