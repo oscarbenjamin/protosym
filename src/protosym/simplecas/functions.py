@@ -82,7 +82,7 @@ eval_repr[a**b] = repr_pow(a, b)
 # ------------------------------------------------------------------------- #
 
 latex_add = PyOpN(lambda args: f'({" + ".join(args)})')
-latex_mul = PyOpN(lambda args: f"({r" \times ".join(args)})")
+latex_mul = PyOpN(lambda args: f"({' \\times '.join(args)})")
 latex_pow = PyOp2(lambda b, e: f"{b}^{{{e}}}")
 latex_sin = PyOp1(lambda a: rf"\sin({a})")
 latex_cos = PyOp1(lambda a: rf"\cos({a})")
