@@ -10,7 +10,12 @@ by user-facing classes that derive from :class:`Sym`.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Generic, Self, Sequence, TypeVar, overload
+from typing import TYPE_CHECKING as _TYPE_CHECKING
+from typing import Any, Callable, Generic, Sequence, TypeVar, overload
+
+if _TYPE_CHECKING:
+    from typing_extensions import Self
+
 from weakref import WeakValueDictionary as _WeakDict
 
 from protosym.core.atom import AtomType
